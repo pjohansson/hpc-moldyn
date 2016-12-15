@@ -1,4 +1,7 @@
-#include <string>
 #include "tests/utils.cpp"
 
+// CMake will replace this definition with the correct path
+// inside the build directory which means that out-of-source
+// builds are possible and the tests can be run from any
+// working directory.
 #define TEST_FILES_DIRECTORY "@Test_Files_Directory@"

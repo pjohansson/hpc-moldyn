@@ -2,8 +2,17 @@
 #include <sstream>
 #include <string>
 
-#define ASSERT(cond, err_string) if (!cond) { print_test_fail(err_string, __func__, __LINE__); }
+//#define ASSERT(cond, err_string) if (!cond) { print_test_fail(err_string, __func__, __LINE__); }
+
+// Compare to input objects and see that they are equivalent. They may
+// be of different types, in which case a static_cast must be possible
+// to perform.
 #define ASSERT_EQ(a, b, err_string) assert_eq(a, b, err_string, __func__, __LINE__);
+
+// Compare two input arrays and assert that they are identical.
+// The objects must be of identical types implementing size(), cbegin()
+// and cend() methods for iteration over the values. Their size and
+// values are both controlled.
 #define ASSERT_EQ_VEC(a, b, err_string) assert_eq_vec(a, b, err_string, __func__, __LINE__);
 
 // Macro which adds a main function which runs the input functions.
@@ -23,6 +32,14 @@
         return num_failed; \
     }
 
+// Macro which wraps a test function with a void declaration
+// and updates the test status afterwards.
+#define ADD_TEST(name, ...) \
+    void name() { \
+        __VA_ARGS__ \
+        finalize_test(); \
+    }
+
 int num_failed = 0;
 bool test_failed = false;
 
@@ -32,9 +49,6 @@ void print_test_fail(const std::string err_string, const std::string file, const
     test_failed = true;
 }
 
-// Compare to input objects and see that they are equivalent. They may
-// be of different types, in which case a static_cast must be possible
-// to perform.
 template<typename T1, typename T2>
 void assert_eq(const T1 recv, const T2 expt, const std::string err_string, const std::string file, const int line)
 {
@@ -45,10 +59,6 @@ void assert_eq(const T1 recv, const T2 expt, const std::string err_string, const
     }
 }
 
-// Compare two input arrays and assert that they are identical.
-// The objects must be of identical types implementing size(), cbegin()
-// and cend() methods for iteration over the values. Their size and
-// values are both controlled.
 template<typename T>
 void assert_eq_vec(const T recv, const T expt, const std::string err_string, const std::string file, const int line)
 {

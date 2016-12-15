@@ -6,8 +6,7 @@
 
 using namespace std;
 
-void test_system_init()
-{
+ADD_TEST(test_system_init,
     SystemConf conf {3};
     ASSERT_EQ(conf.num_atoms(), 0, "number of atoms is not zero-initialized");
     ASSERT_EQ(conf.xs.size(), 0, "number of position elements is not 0");
@@ -19,12 +18,9 @@ void test_system_init()
     ASSERT_EQ_VEC(conf.box, box, "box is not zero-initialized");
 
     ASSERT_EQ(conf.title, "", "title is not initialized as empty");
+)
 
-    finalize_test();
-}
-
-void test_system_add_atom()
-{
+ADD_TEST(test_system_add_atom,
     SystemConf conf {3};
     auto num = conf.add_atom(1.0, 2.0, 3.0);
     ASSERT_EQ(num, 1, "new atom number was not correctly returned after add");
@@ -42,22 +38,16 @@ void test_system_add_atom()
     ASSERT_EQ_VEC(conf.xs, xs, "added atom positions are not those input");
     ASSERT_EQ_VEC(conf.vs, zs, "added atom velocities are not zero-initialized");
     ASSERT_EQ_VEC(conf.fs, zs, "added atom forces are not zero-initialized");
+)
 
-    finalize_test();
-}
-
-void test_system_set_box()
-{
+ADD_TEST(test_system_set_box,
     SystemConf conf {1};
     conf.set_box(1.0, 2.0, 3.0);
     const array<double, 3> box {1.0, 2.0, 3.0};
     ASSERT_EQ_VEC(conf.box, box, "box was not set correctly");
+)
 
-    finalize_test();
-}
-
-void test_system_read_grofile()
-{
+ADD_TEST(test_system_read_grofile,
     const string path = TEST_FILES_DIRECTORY + string{"/grofile_small.gro"};
     const auto conf = read_conf_from_grofile(path);
 
@@ -79,12 +69,9 @@ void test_system_read_grofile()
 
     const array<double, 3> box { 216.00000, 4.67650, 110.00000 };
     ASSERT_EQ_VEC(conf.box, box, "incorrect box size read");
+)
 
-    finalize_test();
-}
-
-void test_system_write_grofile()
-{
+ADD_TEST(test_system_write_grofile,
     const string path = TEST_FILES_DIRECTORY + string{"/.out_test01.gro"};
     SystemConf out {3};
 
@@ -102,9 +89,7 @@ void test_system_write_grofile()
 
     ASSERT_EQ_VEC(conf.xs, xs, "positions were not written correctly");
     ASSERT_EQ_VEC(conf.box, box, "box dimensions were not written correctly");
-
-    finalize_test();
-}
+)
 
 RUN_TESTS(
     test_system_init();

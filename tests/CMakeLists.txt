@@ -10,9 +10,9 @@ set (test_source_files
 # tests. The base path is set in this variable during configuration.
 set (Test_Files_Directory ${PROJECT_BINARY_DIR}/tests/include)
 configure_file (
-  "${PROJECT_SOURCE_DIR}/tests/utils.h.in"
-  "${PROJECT_BINARY_DIR}/tests/utils.h"
-  )
+    "${PROJECT_SOURCE_DIR}/tests/utils.h.in"
+    "${PROJECT_BINARY_DIR}/tests/utils.h"
+)
 
 # Find and copy the required test files to the correct path.
 file(GLOB test_files ${PROJECT_SOURCE_DIR}/tests/include/*.gro)
