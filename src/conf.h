@@ -6,6 +6,8 @@
 #define SYSTEM_CONF_H
 
 constexpr int NDIM = 3;
+constexpr char ATOM_NAME[2] = "C";
+constexpr char RESIDUE_NAME[4] = "SOL";
 
 class SystemConf {
 public:
@@ -28,5 +30,6 @@ private:
 };
 
 SystemConf read_conf_from_grofile(const std::string filename);
+void write_conf_to_grofile(const SystemConf& conf, const std::string& path);
 
 #endif // SYSTEM_CONF_H

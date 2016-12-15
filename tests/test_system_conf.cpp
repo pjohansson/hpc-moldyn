@@ -83,9 +83,33 @@ void test_system_read_grofile()
     finalize_test();
 }
 
+void test_system_write_grofile()
+{
+    const string path = TEST_FILES_DIRECTORY + string{"/.out_test01.gro"};
+    SystemConf out {3};
+
+    out.title = string{"Test output"};
+    out.add_atom(0.0, 1.0, 2.0);
+    out.add_atom(3.0, 4.0, 5.0);
+    out.set_box(4.0, 5.0, 6.0);
+
+    write_conf_to_grofile(out, path);
+    const auto conf = read_conf_from_grofile(path);
+
+    ASSERT_EQ(conf.title, out.title, "title was not written correctly");
+    const vector<double> xs {0.0, 1.0, 2.0, 3.0, 4.0, 5.0};
+    const array<double, 3> box {4.0, 5.0, 6.0};
+
+    ASSERT_EQ_VEC(conf.xs, xs, "positions were not written correctly");
+    ASSERT_EQ_VEC(conf.box, box, "box dimensions were not written correctly");
+
+    finalize_test();
+}
+
 RUN_TESTS(
     test_system_init();
     test_system_add_atom();
     test_system_set_box();
     test_system_read_grofile();
+    test_system_write_grofile();
 );

@@ -1,5 +1,5 @@
-#include <iostream>
 #include <fstream>
+#include <iomanip>
 
 #include "conf.h"
 
@@ -25,7 +25,6 @@ int SystemConf::add_atom(const double x, const double y, const double z)
         vs.push_back(0.0);
         fs.push_back(0.0);
     }
-
     ++natoms;
 
     return natoms;
@@ -68,4 +67,23 @@ SystemConf read_conf_from_grofile(const string path)
     conf.set_box(x, y, z);
 
     return conf;
+}
+
+void write_conf_to_grofile(const SystemConf& conf, const string& path)
+{
+    ofstream out { path, ofstream::out };
+
+    out << conf.title << '\n'
+        << conf.num_atoms() << '\n';
+
+    out.setf(ios::fixed);
+    out.precision(3);
+
+    for (int i = 0; i < conf.num_atoms(); ++i) {
+        out << setw(5) << right << i << setw(5) << left << RESIDUE_NAME << setw(5) << ATOM_NAME << setw(5) << i
+            << setw(8) << conf.xs[i*NDIM] << setw(8) << conf.xs[i*NDIM + 1] << setw(8) << conf.xs[i*NDIM + 2]
+            << '\n';
+    }
+
+    out << setw(9) << right << conf.box[0] << ' ' << setw(9) << conf.box[1] << ' ' << setw(9) << conf.box[2] << '\n';
 }

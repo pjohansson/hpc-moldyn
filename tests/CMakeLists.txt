@@ -1,6 +1,8 @@
 include_directories(${PROJECT_SOURCE_DIR} ${PROJECT_BINARY_DIR})
 link_libraries(conf)
 
+# Add all test source files which should be compiled into executables,
+# functions below add the rest.
 set (test_source_files
      test_system_conf.cpp)
 
