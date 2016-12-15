@@ -1,0 +1,4 @@
+#include <string>
+#include "tests/utils.cpp"
+
+#define TEST_FILES_DIRECTORY "@Test_Files_Directory@"
