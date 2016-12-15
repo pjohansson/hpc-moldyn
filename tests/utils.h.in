@@ -1,5 +1,7 @@
 #include "tests/utils.cpp"
 
+using namespace test;
+
 // CMake will replace this definition with the correct path
 // inside the build directory which means that out-of-source
 // builds are possible and the tests can be run from any

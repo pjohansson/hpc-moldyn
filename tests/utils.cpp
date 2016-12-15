@@ -2,6 +2,8 @@
 #include <sstream>
 #include <string>
 
+namespace test {
+
 int num_failed = 0;
 bool test_failed = false;
 
@@ -62,3 +64,5 @@ void finalize_test()
         test_failed = false;
     }
 }
+
+} // namespace test
