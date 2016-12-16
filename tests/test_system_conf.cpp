@@ -1,4 +1,6 @@
+#include <array>
 #include <string>
+#include <vector>
 
 #include "tests/utils.h"
 

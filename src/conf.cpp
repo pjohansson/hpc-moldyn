@@ -32,9 +32,9 @@ int SystemConf::add_atom(const double x, const double y, const double z)
 
 void SystemConf::set_box(const double x, const double y, const double z)
 {
-    box[0] = x;
-    box[1] = y;
-    box[2] = z;
+    box[XX] = x;
+    box[YY] = y;
+    box[ZZ] = z;
 }
 
 SystemConf read_conf_from_grofile(const string path)
@@ -85,5 +85,7 @@ void write_conf_to_grofile(const SystemConf& conf, const string& path)
             << '\n';
     }
 
-    out << setw(9) << right << conf.box[0] << ' ' << setw(9) << conf.box[1] << ' ' << setw(9) << conf.box[2] << '\n';
+    out << setw(9) << right << conf.box[0] << ' '
+        << setw(9) << conf.box[1] << ' '
+        << setw(9) << conf.box[2] << '\n';
 }

@@ -5,7 +5,13 @@
 #ifndef SYSTEM_CONF_H
 #define SYSTEM_CONF_H
 
-constexpr int NDIM = 3;
+enum Direction {
+    XX,
+    YY,
+    ZZ,
+    NDIM
+};
+
 constexpr char ATOM_NAME[2] = "C";
 constexpr char RESIDUE_NAME[4] = "SOL";
 
