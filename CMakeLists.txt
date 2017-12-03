@@ -1,5 +1,5 @@
 cmake_minimum_required (VERSION 3.0)
-project ("HPC moldyn")
+project ("HPC Moldyn")
 
 add_compile_options(-Wall -std=c++14 -O3)
 

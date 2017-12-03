@@ -1,38 +1,46 @@
-#include <array>
 #include <cmath>
 
 #include "conf.h"
 
-using namespace std;
-
 constexpr double epsilon = 1;
 constexpr double sigma = 1;
-constexpr double sigma6 = pow(sigma, 6);
-constexpr double sigma12 = pow(sigma, 12);
-
+constexpr double sigma6 = std::pow(sigma, 6);
+constexpr double sigma12 = std::pow(sigma, 12);
 
 void calc_forces(SystemConf& conf)
 {
-    for (int i = 0; i < conf.num_atoms(); ++i) {
-        for (int j = i+1; j < conf.num_atoms(); j++) {
-            array<double, NDIM> dxs {0.0, 0.0, 0.0};
-            auto dx2 = 0.0;
-            for (int k = 0; k < NDIM; ++k) {
-                auto dx = conf.xs[j*NDIM + k] - conf.xs[i*NDIM + k];
-                dxs[k] = dx;
-                dx2 += dx*dx;
+    for (unsigned i = 0; i < conf.num_atoms(); ++i)
+    {
+        for (unsigned j = i + 1; j < conf.num_atoms(); ++j)
+        {
+            RVec dr {0.0, 0.0, 0.0};
+            auto dr2 = 0.0;
+
+            for (int k = 0; k < NDIM; ++k)
+            {
+                const auto dx = conf.xs.at(j * NDIM + k)
+                    - conf.xs.at(i * NDIM + k);
+
+                dr[k] = dx;
+                dr2 += dx * dx;
             }
 
-            if (dx2 > 0.0) {
-                for (int k = 0; k < NDIM; ++k) {
-                    auto dx = dxs[k];
-                    if (dx > 0.0) {
-                        auto dx7 = pow(dx, 7);
-                        auto dx13 = pow(dx, 13);
+            if (dr2 > 0.0)
+            {
+                for (int k = 0; k < NDIM; ++k)
+                {
+                    const auto dx = dr[k];
 
-                        auto force = 24*epsilon*(sigma12/dx13 - sigma6/dx7);
-                        conf.fs[i*NDIM + k] = force;
-                        conf.fs[j*NDIM + k] = -force;
+                    if (dx > 0.0)
+                    {
+                        const auto dx7 = std::pow(dx, 7);
+                        const auto dx13 = std::pow(dx, 13);
+
+                        const auto force = 24 * epsilon
+                            * (sigma12 / dx13 - sigma6 / dx7);
+
+                        conf.fs[i * NDIM + k] = force;
+                        conf.fs[j * NDIM + k] = -force;
                     }
                 }
             }

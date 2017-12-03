@@ -1,4 +1,5 @@
 #include <array>
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -12,30 +13,44 @@ enum Direction {
     NDIM
 };
 
+using real = double;
+using RVec = std::array<real, NDIM>;
+
 constexpr char ATOM_NAME[2] = "C";
 constexpr char RESIDUE_NAME[4] = "SOL";
 
 class SystemConf {
 public:
-    SystemConf(int capacity);
+    // Allocate memory for the system and return an empty configuration.
+    SystemConf(uint64_t capacity);
 
-    std::vector<double> xs; // positions (x), 1 elem per dimension
-    std::vector<double> vs; // velocities (v)
-    std::vector<double> fs; // forces (f)
+    std::vector<real> xs; // positions (x), 1 elem per dimension
+    std::vector<real> vs; // velocities (v)
+    std::vector<real> fs; // forces (f)
 
-    std::array<double, NDIM> box;
+    // Box size.
+    std::array<real, NDIM> box;
+
+    // Title of system.
     std::string title;
 
-    int num_atoms() const { return natoms; };
+    // Return the number of atoms in the system.
+    const uint64_t num_atoms(void) const { return natoms; };
 
-    int add_atom(double x, double y, double z);
-    void set_box(double x, double y, double z);
+    // Add an atom with input position to the system.
+    const uint64_t add_atom(const real x, const real y, const real z);
+
+    // Set the box size.
+    void set_box(const real x, const real y, const real z);
 
 private:
-    int natoms;
+    uint64_t natoms;
 };
 
+// Read a configuration from a Gromos formatted file.
 SystemConf read_conf_from_grofile(const std::string filename);
+
+// Write the configuration to a Gromos formatted file.
 void write_conf_to_grofile(const SystemConf& conf, const std::string& path);
 
 #endif // SYSTEM_CONF_H
