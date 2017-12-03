@@ -35,7 +35,7 @@ void SystemConf::set_box(const real x, const real y, const real z)
     box[ZZ] = z;
 }
 
-SystemConf read_conf_from_grofile(const std::string path)
+SystemConf read_conf_from_grofile(const std::string& path)
 {
     std::ifstream ifs { path, std::ifstream::in };
 

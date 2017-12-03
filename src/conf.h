@@ -54,7 +54,7 @@ private:
 };
 
 // Read a configuration from a Gromos formatted file.
-SystemConf read_conf_from_grofile(const std::string filename);
+SystemConf read_conf_from_grofile(const std::string& filename);
 
 // Write the configuration to a Gromos formatted file.
 void write_conf_to_grofile(const SystemConf& conf, const std::string& path);
