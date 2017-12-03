@@ -24,10 +24,8 @@ ADD_TEST(test_system_init,
 
 ADD_TEST(test_system_add_atom,
     SystemConf conf {3};
-    auto num = conf.add_atom(1.0, 2.0, 3.0);
-    ASSERT_EQ(num, 1, "new atom number was not correctly returned after add");
-    num = conf.add_atom(1.0, 2.0, 3.0);
-    ASSERT_EQ(num, 2, "new atom number was not correctly returned after add");
+    conf.add_atom(1.0, 2.0, 3.0);
+    conf.add_atom(1.0, 2.0, 3.0);
 
     ASSERT_EQ(conf.num_atoms(), 2, "atom number was not updated after add");
     ASSERT_EQ(conf.xs.size(), 6, "wrong number of position elements");

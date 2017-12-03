@@ -2,7 +2,7 @@
 
 #include "conf.h"
 
-int main(int argc, char* argv[])
+int main(const int argc, const char* argv[])
 {
     std::cout << "Hello, World!\n";
     SystemConf conf {3};

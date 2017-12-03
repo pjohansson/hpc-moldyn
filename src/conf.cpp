@@ -13,20 +13,19 @@ SystemConf::SystemConf(const uint64_t capacity)
     fs.reserve(NDIM * capacity);
 }
 
-const uint64_t SystemConf::add_atom(const real x, const real y, const real z)
+void SystemConf::add_atom(const real x, const real y, const real z)
 {
     xs.push_back(x);
     xs.push_back(y);
     xs.push_back(z);
 
-    for (int i = 0; i < NDIM; ++i) {
+    for (int i = 0; i < NDIM; ++i)
+    {
         vs.push_back(0.0);
         fs.push_back(0.0);
     }
 
     ++natoms;
-
-    return natoms;
 }
 
 void SystemConf::set_box(const real x, const real y, const real z)
@@ -52,7 +51,8 @@ SystemConf read_conf_from_grofile(const std::string path)
     SystemConf conf (num_atoms);
     conf.title = title;
 
-    for (unsigned i = 0; i < num_atoms; ++i) {
+    for (unsigned i = 0; i < num_atoms; ++i)
+    {
         getline(ifs, buffer);
         const auto x = std::stod(buffer.substr(20, 8));
         const auto y = std::stod(buffer.substr(28, 8));
@@ -79,7 +79,8 @@ void write_conf_to_grofile(const SystemConf& conf, const std::string& path)
     out.setf(std::ios::fixed);
     out.precision(3);
 
-    for (unsigned i = 0; i < conf.num_atoms(); ++i) {
+    for (unsigned i = 0; i < conf.num_atoms(); ++i)
+    {
         out << std::setw(5) << std::right << i
             << std::setw(5) << std::left << RESIDUE_NAME
             << std::setw(5) << ATOM_NAME

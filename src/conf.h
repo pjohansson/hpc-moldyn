@@ -24,24 +24,30 @@ public:
     // Allocate memory for the system and return an empty configuration.
     SystemConf(uint64_t capacity);
 
-    std::vector<real> xs; // positions (x), 1 elem per dimension
-    std::vector<real> vs; // velocities (v)
-    std::vector<real> fs; // forces (f)
+    /************
+    * Functions *
+    *************/
+    // Return the number of atoms in the system.
+    const uint64_t num_atoms(void) const { return natoms; };
+
+    // Add an atom with input position to the system.
+    void add_atom(const real x, const real y, const real z);
+
+    // Set the box size.
+    void set_box(const real x, const real y, const real z);
+
+    /************
+    * Variables *
+    *************/
+    std::vector<real> xs; // Positions (x), 1 elem per dimension
+    std::vector<real> vs; // Velocities (v)
+    std::vector<real> fs; // Forces (f)
 
     // Box size.
     std::array<real, NDIM> box;
 
     // Title of system.
     std::string title;
-
-    // Return the number of atoms in the system.
-    const uint64_t num_atoms(void) const { return natoms; };
-
-    // Add an atom with input position to the system.
-    const uint64_t add_atom(const real x, const real y, const real z);
-
-    // Set the box size.
-    void set_box(const real x, const real y, const real z);
 
 private:
     uint64_t natoms;
