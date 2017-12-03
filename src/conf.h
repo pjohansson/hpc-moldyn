@@ -48,10 +48,10 @@ private:
     uint64_t natoms;
 };
 
-class SystemConf {
+class System {
 public:
-    // Allocate memory for the system and return an empty configuration.
-    SystemConf(const std::string& title, const RVec box_size);
+    // Prepare a container for the system.
+    System(const std::string& title, const RVec box_size);
 
     /************
     * Functions *
@@ -73,9 +73,9 @@ public:
 };
 
 // Read a configuration from a Gromos formatted file.
-SystemConf read_conf_from_grofile(const std::string& filename);
+System read_conf_from_grofile(const std::string& filename);
 
 // Write the configuration to a Gromos formatted file.
-void write_conf_to_grofile(const SystemConf& conf, const std::string& path);
+void write_conf_to_grofile(const System& system, const std::string& path);
 
 #endif // SYSTEM_CONF_H

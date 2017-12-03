@@ -3,13 +3,13 @@
 
 #include "conf.h"
 
-SystemConf::SystemConf(const std::string& title, const RVec box_size)
+System::System(const std::string& title, const RVec box_size)
     :box_size { box_size },
      title { title }
 {
 }
 
-uint64_t SystemConf::num_atoms() const
+uint64_t System::num_atoms() const
 {
     uint64_t num = 0;
 
@@ -46,7 +46,7 @@ void Box::add_atom(const real x, const real y, const real z)
     ++natoms;
 }
 
-SystemConf read_conf_from_grofile(const std::string& path)
+System read_conf_from_grofile(const std::string& path)
 {
     std::ifstream ifs { path, std::ifstream::in };
 
@@ -80,28 +80,28 @@ SystemConf read_conf_from_grofile(const std::string& path)
     const RVec box_size {dx, dy, dz};
     box.size = box_size;
 
-    auto conf = SystemConf(title, box_size);
-    conf.boxes.push_back(box);
+    auto system = System(title, box_size);
+    system.boxes.push_back(box);
 
-    return conf;
+    return system;
 }
 
-void write_conf_to_grofile(const SystemConf& conf, const std::string& path)
+void write_conf_to_grofile(const System& system, const std::string& path)
 {
     constexpr char ATOM_NAME[2] = "C";
     constexpr char RESIDUE_NAME[4] = "SOL";
 
     std::ofstream out { path, std::ofstream::out };
 
-    out << conf.title << '\n'
-        << conf.num_atoms() << '\n';
+    out << system.title << '\n'
+        << system.num_atoms() << '\n';
 
     out.setf(std::ios::fixed);
     out.precision(3);
 
     uint64_t n = 0;
 
-    for (const auto &box : conf.boxes)
+    for (const auto &box : system.boxes)
     {
         for (unsigned i = 0; i < box.num_atoms(); ++i)
         {
@@ -118,7 +118,7 @@ void write_conf_to_grofile(const SystemConf& conf, const std::string& path)
         }
     }
 
-    out << std::setw(9) << std::right << conf.box_size[0] << ' '
-        << std::setw(9) << conf.box_size[1] << ' '
-        << std::setw(9) << conf.box_size[2] << '\n';
+    out << std::setw(9) << std::right << system.box_size[0] << ' '
+        << std::setw(9) << system.box_size[1] << ' '
+        << std::setw(9) << system.box_size[2] << '\n';
 }

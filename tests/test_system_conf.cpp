@@ -46,13 +46,13 @@ ADD_TEST(test_system_init,
     const std::string title {"title of system"};
     const RVec box_size {1.0, 2.0, 3.0};
 
-    const SystemConf conf {title, box_size};
+    const System system {title, box_size};
 
-    ASSERT_EQ(conf.title, title, "title is not initialized correctly");
-    ASSERT_EQ_VEC(conf.box_size, box_size, "box size is not initialized correctly");
+    ASSERT_EQ(system.title, title, "title is not initialized correctly");
+    ASSERT_EQ_VEC(system.box_size, box_size, "box size is not initialized correctly");
 
-    ASSERT_EQ(conf.num_atoms(), 0, "number of atoms is not zero-initialized");
-    ASSERT_EQ(conf.boxes.size(), 0, "number of boxes in system is not zero");
+    ASSERT_EQ(system.num_atoms(), 0, "number of atoms is not zero-initialized");
+    ASSERT_EQ(system.boxes.size(), 0, "number of boxes in system is not zero");
 )
 
 ADD_TEST(test_system_adds_num_atoms_from_boxes,
@@ -68,37 +68,37 @@ ADD_TEST(test_system_adds_num_atoms_from_boxes,
     box2.add_atom(1.0, 0.0, 0.0);
     box2.add_atom(2.0, 0.0, 0.0);
 
-    SystemConf conf {title, box_size};
-    conf.boxes.push_back(box1);
-    conf.boxes.push_back(box2);
+    System system {title, box_size};
+    system.boxes.push_back(box1);
+    system.boxes.push_back(box2);
 
-    ASSERT_EQ(conf.num_atoms(), 5, "system does not calculate number of atoms correctly");
+    ASSERT_EQ(system.num_atoms(), 5, "system does not calculate number of atoms correctly");
 )
 
 ADD_TEST(test_system_read_grofile,
     const string path = TEST_FILES_DIRECTORY + string{"/grofile_small.gro"};
-    const auto conf = read_conf_from_grofile(path);
+    const auto system = read_conf_from_grofile(path);
 
-    ASSERT_EQ(conf.title, "small test grofile", "incorrect title read");
+    ASSERT_EQ(system.title, "small test grofile", "incorrect title read");
 
     // The file has three atoms and only the positions should be read
-    ASSERT_EQ(conf.boxes.size(), 1, "the atoms were not added to a single box");
-    ASSERT_EQ(conf.boxes[0].num_atoms(), 3, "incorrect number of atoms read");
+    ASSERT_EQ(system.boxes.size(), 1, "the atoms were not added to a single box");
+    ASSERT_EQ(system.boxes[0].num_atoms(), 3, "incorrect number of atoms read");
 
     const vector<double> xs {
         0.129, 0.079, 0.464,
         0.119, 0.061, 0.314,
         0.109, 0.042, 0.165
     };
-    ASSERT_EQ_VEC(conf.boxes[0].xs, xs, "positions were not read correctly");
+    ASSERT_EQ_VEC(system.boxes[0].xs, xs, "positions were not read correctly");
 
     const vector<double> zeroes (9, 0.0);
-    ASSERT_EQ_VEC(conf.boxes[0].vs, zeroes, "velocities are not zero-initialized");
-    ASSERT_EQ_VEC(conf.boxes[0].fs, zeroes, "forces are not zero-initialized");
+    ASSERT_EQ_VEC(system.boxes[0].vs, zeroes, "velocities are not zero-initialized");
+    ASSERT_EQ_VEC(system.boxes[0].fs, zeroes, "forces are not zero-initialized");
 
     const array<double, 3> box_size { 216.00000, 4.67650, 110.00000 };
-    ASSERT_EQ_VEC(conf.box_size, box_size, "incorrect box size set to system");
-    ASSERT_EQ_VEC(conf.boxes[0].size, box_size, "incorrect box size set to box");
+    ASSERT_EQ_VEC(system.box_size, box_size, "incorrect box size set to system");
+    ASSERT_EQ_VEC(system.boxes[0].size, box_size, "incorrect box size set to box");
 )
 
 ADD_TEST(test_system_write_grofile,
@@ -114,18 +114,18 @@ ADD_TEST(test_system_write_grofile,
     box1.add_atom(3.0, 4.0, 5.0);
     box2.add_atom(6.0, 7.0, 8.0);
 
-    SystemConf output {title, box_size};
+    System output {title, box_size};
     output.boxes.push_back(box1);
     output.boxes.push_back(box2);
 
     write_conf_to_grofile(output, path);
-    const auto conf = read_conf_from_grofile(path);
+    const auto system = read_conf_from_grofile(path);
 
-    ASSERT_EQ(conf.title, title, "title was not written correctly");
-    ASSERT_EQ_VEC(conf.box_size, box_size, "box dimensions were not written correctly");
+    ASSERT_EQ(system.title, title, "title was not written correctly");
+    ASSERT_EQ_VEC(system.box_size, box_size, "box dimensions were not written correctly");
 
     const vector<real> xs {0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0};
-    ASSERT_EQ_VEC(conf.boxes[0].xs, xs, "positions were not written correctly");
+    ASSERT_EQ_VEC(system.boxes[0].xs, xs, "positions were not written correctly");
 )
 
 RUN_TESTS(
