@@ -13,7 +13,7 @@ uint64_t SystemConf::num_atoms() const
 {
     uint64_t num = 0;
 
-    for (const auto box : boxes)
+    for (const auto& box : boxes)
     {
         num += box.num_atoms();
     }
@@ -85,30 +85,40 @@ SystemConf read_conf_from_grofile(const std::string& path)
 
     return conf;
 }
-//
-// void write_conf_to_grofile(const SystemConf& conf, const std::string& path)
-// {
-//     std::ofstream out { path, std::ofstream::out };
-//
-//     out << conf.title << '\n'
-//         << conf.num_atoms() << '\n';
-//
-//     out.setf(std::ios::fixed);
-//     out.precision(3);
-//
-//     for (unsigned i = 0; i < conf.num_atoms(); ++i)
-//     {
-//         out << std::setw(5) << std::right << i
-//             << std::setw(5) << std::left << RESIDUE_NAME
-//             << std::setw(5) << ATOM_NAME
-//             << std::setw(5) << i
-//             << std::setw(8) << conf.xs.at(i * NDIM + XX)
-//             << std::setw(8) << conf.xs.at(i * NDIM + YY)
-//             << std::setw(8) << conf.xs.at(i * NDIM + ZZ)
-//             << '\n';
-//     }
-//
-//     out << std::setw(9) << std::right << conf.box[0] << ' '
-//         << std::setw(9) << conf.box[1] << ' '
-//         << std::setw(9) << conf.box[2] << '\n';
-// }
+
+void write_conf_to_grofile(const SystemConf& conf, const std::string& path)
+{
+    constexpr char ATOM_NAME[2] = "C";
+    constexpr char RESIDUE_NAME[4] = "SOL";
+
+    std::ofstream out { path, std::ofstream::out };
+
+    out << conf.title << '\n'
+        << conf.num_atoms() << '\n';
+
+    out.setf(std::ios::fixed);
+    out.precision(3);
+
+    uint64_t n = 0;
+
+    for (const auto &box : conf.boxes)
+    {
+        for (unsigned i = 0; i < box.num_atoms(); ++i)
+        {
+            out << std::setw(5) << std::right << n
+                << std::setw(5) << std::left << RESIDUE_NAME
+                << std::setw(5) << ATOM_NAME
+                << std::setw(5) << n
+                << std::setw(8) << box.xs.at(i * NDIM + XX)
+                << std::setw(8) << box.xs.at(i * NDIM + YY)
+                << std::setw(8) << box.xs.at(i * NDIM + ZZ)
+                << '\n';
+
+            ++n;
+        }
+    }
+
+    out << std::setw(9) << std::right << conf.box_size[0] << ' '
+        << std::setw(9) << conf.box_size[1] << ' '
+        << std::setw(9) << conf.box_size[2] << '\n';
+}

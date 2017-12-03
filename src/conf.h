@@ -16,9 +16,6 @@ enum Direction {
 using real = double;
 using RVec = std::array<real, NDIM>;
 
-constexpr char ATOM_NAME[2] = "C";
-constexpr char RESIDUE_NAME[4] = "SOL";
-
 // A cubic box of atoms as a part of the whole system.
 class Box {
 public:
