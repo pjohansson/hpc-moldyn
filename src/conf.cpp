@@ -35,6 +35,31 @@ void SystemConf::set_box(const real x, const real y, const real z)
     box[ZZ] = z;
 }
 
+Box::Box(const uint64_t capacity, const RVec origin, const RVec size)
+    :origin { origin },
+     size { size },
+     natoms { 0 }
+{
+    xs.reserve(NDIM * capacity);
+    vs.reserve(NDIM * capacity);
+    fs.reserve(NDIM * capacity);
+}
+
+void Box::add_atom(const real x, const real y, const real z)
+{
+    xs.push_back(x);
+    xs.push_back(y);
+    xs.push_back(z);
+
+    for (int i = 0; i < NDIM; ++i)
+    {
+        vs.push_back(0.0);
+        fs.push_back(0.0);
+    }
+
+    ++natoms;
+}
+
 SystemConf read_conf_from_grofile(const std::string& path)
 {
     std::ifstream ifs { path, std::ifstream::in };
