@@ -61,8 +61,7 @@ static RVec calc_force_between_atoms(const dRVec&      dr,
         const auto dr6 = dr2 * dr2 * dr2;
         const auto dr12 = dr6 * dr6;
 
-        const auto force = 24 * ff.epsilon
-            * (2.0 * ff.sigma12 / dr12 - ff.sigma6 / dr6);
+        const auto force = ff.C12 / dr12 - ff.C6 / dr6;
 
         for (int i = 0; i < NDIM; ++i)
         {
