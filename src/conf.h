@@ -19,40 +19,6 @@ using RVec = std::array<real, NDIM>;
 constexpr char ATOM_NAME[2] = "C";
 constexpr char RESIDUE_NAME[4] = "SOL";
 
-class SystemConf {
-public:
-    // Allocate memory for the system and return an empty configuration.
-    SystemConf(uint64_t capacity);
-
-    /************
-    * Functions *
-    *************/
-    // Return the number of atoms in the system.
-    uint64_t num_atoms(void) const { return natoms; };
-
-    // Add an atom with input position to the system.
-    void add_atom(const real x, const real y, const real z);
-
-    // Set the box size.
-    void set_box(const real x, const real y, const real z);
-
-    /************
-    * Variables *
-    *************/
-    std::vector<real> xs; // Positions (x), 1 elem per dimension
-    std::vector<real> vs; // Velocities (v)
-    std::vector<real> fs; // Forces (f)
-
-    // Box size.
-    RVec box;
-
-    // Title of system.
-    std::string title;
-
-private:
-    uint64_t natoms;
-};
-
 // A cubic box of atoms as a part of the whole system.
 class Box {
 public:
@@ -83,6 +49,30 @@ public:
 
 private:
     uint64_t natoms;
+};
+
+class SystemConf {
+public:
+    // Allocate memory for the system and return an empty configuration.
+    SystemConf(const std::string& title, const RVec box_size);
+
+    /************
+    * Functions *
+    *************/
+    // Return the number of atoms in the system.
+    uint64_t num_atoms(void) const;
+
+    /************
+    * Variables *
+    *************/
+    // The system is split into (maybe) several boxes containing the atoms.
+    std::vector<Box> boxes;
+
+    // Box size.
+    RVec box_size;
+
+    // Title of system.
+    std::string title;
 };
 
 // Read a configuration from a Gromos formatted file.
