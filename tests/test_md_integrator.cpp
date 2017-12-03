@@ -4,7 +4,7 @@
 
 #include "src/conf.h"
 #include "src/forcefield.h"
-#include "src/integrator.cpp"
+#include "src/integrator.h"
 
 using namespace std;
 

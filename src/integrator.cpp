@@ -1,7 +1,6 @@
 #include <cmath>
 
-#include "conf.h"
-#include "forcefield.h"
+#include "integrator.h"
 
 using dRVec = std::array<real, NDIM + 1>;
 

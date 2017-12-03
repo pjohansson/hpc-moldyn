@@ -2,6 +2,7 @@
 
 #include "conf.h"
 #include "forcefield.h"
+#include "integrator.h"
 
 int main(const int argc, const char* argv[])
 {
