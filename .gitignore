@@ -27,3 +27,11 @@
 *.exe
 *.out
 *.app
+
+# Temporary and backup files
+*.swp
+*~
+
+# Compiled output
+build/
+target/

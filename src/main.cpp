@@ -1,14 +1,12 @@
 #include <iostream>
-#include <string>
-#include <vector>
 
 #include "conf.h"
+#include "forcefield.h"
+#include "integrator.h"
 
-using namespace std;
-
-int main(int argc, char* argv[])
+int main(const int argc, const char* argv[])
 {
-    cout << "Hello, World!\n";
+    std::cout << "Hello, World!\n";
 
     return 0;
 }

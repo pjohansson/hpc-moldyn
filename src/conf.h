@@ -1,35 +1,81 @@
 #include <array>
+#include <cstdint>
 #include <string>
 #include <vector>
 
 #ifndef SYSTEM_CONF_H
 #define SYSTEM_CONF_H
 
-constexpr int NDIM = 3;
-constexpr char ATOM_NAME[2] = "C";
-constexpr char RESIDUE_NAME[4] = "SOL";
-
-class SystemConf {
-public:
-    SystemConf(int capacity);
-
-    std::vector<double> xs; // positions (x), 1 elem per dimension
-    std::vector<double> vs; // velocities (v)
-    std::vector<double> fs; // forces (f)
-
-    std::array<double, NDIM> box;
-    std::string title;
-
-    int num_atoms() const { return natoms; };
-
-    int add_atom(double x, double y, double z);
-    void set_box(double x, double y, double z);
-
-private:
-    int natoms;
+enum Direction {
+    XX,
+    YY,
+    ZZ,
+    NDIM
 };
 
-SystemConf read_conf_from_grofile(const std::string filename);
-void write_conf_to_grofile(const SystemConf& conf, const std::string& path);
+using real = double;
+using RVec = std::array<real, NDIM>;
+
+// A cubic box of atoms as a part of the whole system.
+class Box {
+public:
+    // Allocate memory for the box and return an empty configuration.
+    Box(const uint64_t capacity, const RVec origin, const RVec size);
+
+    /************
+    * Functions *
+    *************/
+    // Return the number of atoms in the box.
+    uint64_t num_atoms(void) const { return natoms; };
+
+    // Add an atom with input position to the system.
+    void add_atom(const real x, const real y, const real z);
+
+    /************
+    * Variables *
+    *************/
+    std::vector<real> xs; // Positions (x), 1 elem per dimension: relative to the origin
+    std::vector<real> vs; // Velocities (v)
+    std::vector<real> fs; // Forces (f)
+
+    // Box origin.
+    RVec origin;
+
+    // Box size.
+    RVec size;
+
+private:
+    uint64_t natoms;
+};
+
+class System {
+public:
+    // Prepare a container for the system.
+    System(const std::string& title, const RVec box_size);
+
+    /************
+    * Functions *
+    *************/
+    // Return the number of atoms in the system.
+    uint64_t num_atoms(void) const;
+
+    /************
+    * Variables *
+    *************/
+    // The system is split into (maybe) several boxes containing the atoms.
+    std::vector<Box> boxes;
+
+    // Box size.
+    RVec box_size;
+
+    // Title of system.
+    std::string title;
+};
+
+// Read a configuration from a Gromos formatted file.
+System read_conf_from_grofile(const std::string& filename);
+
+// Write the configuration to a Gromos formatted file.
+void write_conf_to_grofile(const System& system, const std::string& path);
 
 #endif // SYSTEM_CONF_H

@@ -1,10 +1,11 @@
 include_directories(${PROJECT_SOURCE_DIR} ${PROJECT_BINARY_DIR})
-link_libraries(conf)
+link_libraries(conf integrator)
 
 # Add all test source files which should be compiled into executables,
 # functions below add the rest.
 set (test_source_files
-     test_system_conf.cpp)
+     test_system_conf.cpp
+     test_md_integrator.cpp)
 
 # Files which are used for tests need the correct path inside of the
 # tests. The base path is set in this variable during configuration.
