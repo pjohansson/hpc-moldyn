@@ -9,26 +9,16 @@ SystemConf::SystemConf(const std::string& title, const RVec box_size)
 {
 }
 
-void SystemConf::add_atom(const real x, const real y, const real z)
+uint64_t SystemConf::num_atoms() const
 {
-    xs.push_back(x);
-    xs.push_back(y);
-    xs.push_back(z);
+    uint64_t num = 0;
 
-    for (int i = 0; i < NDIM; ++i)
+    for (const auto box : boxes)
     {
-        vs.push_back(0.0);
-        fs.push_back(0.0);
+        num += box.num_atoms();
     }
 
-    ++natoms;
-}
-
-void SystemConf::set_box(const real x, const real y, const real z)
-{
-    box[XX] = x;
-    box[YY] = y;
-    box[ZZ] = z;
+    return num;
 }
 
 Box::Box(const uint64_t capacity, const RVec origin, const RVec size)
