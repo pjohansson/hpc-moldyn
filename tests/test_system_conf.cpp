@@ -18,7 +18,7 @@ ADD_TEST(test_box_init,
     ASSERT_EQ(box.xs.size(), 0, "number of position elements is not 0");
     ASSERT_EQ(box.vs.size(), 0, "number of velocity elements is not 0");
     ASSERT_EQ(box.fs.size(), 0, "number of force elements is not 0");
-    ASSERT_EQ(box.xs.capacity(), 9, "capacity of vector is not 3*3 elems as input");
+    ASSERT_EQ(box.xs.capacity(), 9, "capacity of vector is not 3 * 3 elems as input");
 
     ASSERT_EQ_VEC(box.origin, origin, "box origin is not set correctly");
     ASSERT_EQ_VEC(box.size, size, "box size is not set correctly");
