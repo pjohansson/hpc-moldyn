@@ -112,3 +112,18 @@ void calc_forces_from_to_box(Box& from_box, Box& to_box, const ForceField& ff)
         }
     }
 }
+
+void update_velocities_box(Box& box, const ForceField &ff, const real dt)
+{
+    auto iter_vs = box.vs.begin();
+    auto iter_fs = box.fs.cbegin();
+    auto iter_fs_prev = box.fs_prev.cbegin();
+
+    const real avg_divider = 2.0 * ff.mass;
+
+    while (iter_vs != box.vs.end())
+    {
+        const auto a = (*iter_fs++ + *iter_fs_prev++) / avg_divider;
+        *iter_vs++ += a * dt;
+    }
+}

@@ -15,6 +15,8 @@ constexpr ForceField TestFF (
     2.0  // mass
 );
 
+constexpr real DT {5e-3};
+
 ADD_TEST(test_calc_force,
     Box box (2, RVec {0.0, 0.0, 0.0}, RVec{1.0, 1.0, 1.0});
 
@@ -89,9 +91,49 @@ ADD_TEST(test_calc_force_between_two_boxes,
     ASSERT_EQ_VEC(box2.fs, expected2, "forces are not calculated correctly");
 )
 
+ADD_TEST(test_update_velocity,
+    Box box (2, RVec {0.0, 0.0, 0.0}, RVec{1.0, 1.0, 1.0});
+
+    box.add_atom(0.0, 0.0, 0.0);
+    box.add_atom(1.0, 0.0, 0.0);
+
+    const vector<real> fs      {0.0, 1.0, 2.0, 3.0,  4.0,  5.0};
+    const vector<real> fs_prev {6.0, 7.0, 8.0, 9.0, 10.0, 11.0};
+
+    // Set the current velocity to ensure that the updated velocity
+    // takes it into account and does not use it as zero.
+    const real old_velocity = 1.0;
+    const vector<real> vs (fs.size(), old_velocity);
+
+    // Calculate the expected values
+    auto iter = fs.cbegin();
+    auto iter_prev = fs_prev.cbegin();
+    vector<real> expected;
+
+    while ((iter != fs.cend()) && (iter_prev != fs_prev.cend()))
+    {
+        // Calculate acceleration as the mean of the current and previous forces
+        // according to the Velocity Verlet algorithm
+        const auto mean_force = (*iter++ + *iter_prev++) / 2.0;
+        const auto acceleration = mean_force / TestFF.mass;
+
+        const auto new_velocity = old_velocity + acceleration * DT;
+        expected.push_back(new_velocity);
+    }
+
+    box.vs = vs;
+    box.fs = fs;
+    box.fs_prev = fs_prev;
+
+    update_velocities_box(box, TestFF, DT);
+
+    ASSERT_EQ_VEC(box.vs, expected, "velocities are not updated correctly");
+)
+
 RUN_TESTS(
     test_calc_force();
     test_calc_force_outside_of_rcut_is_zero();
     test_calc_force_adds_total_force();
     test_calc_force_between_two_boxes();
+    test_update_velocity();
 )
