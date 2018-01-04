@@ -2,6 +2,7 @@
 
 #include "integrator.h"
 
+// Equal to `RVec` but with the distance squared added as a final element.
 using dRVec = std::array<real, NDIM + 1>;
 
 static RVec calc_shift_between_boxes(const Box& from_box, const Box& to_box)
@@ -16,6 +17,7 @@ static RVec calc_shift_between_boxes(const Box& from_box, const Box& to_box)
     return shift;
 }
 
+// Calculate the distance between to atoms of input indices in a box.
 static dRVec calc_distance(const std::vector<real>& xs,
                            const size_t             from,
                            const size_t             to)
@@ -31,6 +33,9 @@ static dRVec calc_distance(const std::vector<real>& xs,
     return dr;
 }
 
+// Calculate the distance between two atoms of input indices in different
+// boxes. This is a separate function from the internal calculation since
+// they should not be confused and I do not like overloading.
 static dRVec calc_distance_different_boxes(const std::vector<real>& from_xs,
                                            const size_t             i1,
                                            const std::vector<real>& to_xs,
@@ -70,6 +75,7 @@ static RVec calc_force_between_atoms(const dRVec&      dr,
     return force_vec;
 }
 
+// Add the forces from internal interactions within a single box.
 void calc_forces_internal(Box& box, const ForceField& ff)
 {
     for (unsigned i = 0; i < box.num_atoms() - 1; ++i)
@@ -88,6 +94,14 @@ void calc_forces_internal(Box& box, const ForceField& ff)
     }
 }
 
+// Add the forces from interactions between all atoms from one box to another.
+// This is separate from the calculation in an internal box since I do not
+// like overloading, and the functions do slightly different things: for
+// internal calculations, the interaction matrix for indices is symmetric
+// and we avoid duplicate calculations in a suitable manner (atoms only
+// interact once with each other), making the calculation N log N. Since
+//  box-to-box calculations contain no duplicate atoms, we must always count
+// the full N * M interactions.
 void calc_forces_from_to_box(Box& from_box, Box& to_box, const ForceField& ff)
 {
     const auto shift = calc_shift_between_boxes(from_box, to_box);
@@ -113,6 +127,8 @@ void calc_forces_from_to_box(Box& from_box, Box& to_box, const ForceField& ff)
     }
 }
 
+// Update all the positions inside a box using the Velocity Verlet
+// integration scheme.
 void update_positions_box(Box& box, const ForceField &ff, const double dt)
 {
     auto iter_vs = box.vs.cbegin();
@@ -126,6 +142,8 @@ void update_positions_box(Box& box, const ForceField &ff, const double dt)
     }
 }
 
+// Update all the velocities inside a box using the Velocity Verlet 
+// integration scheme.
 void update_velocities_box(Box& box, const ForceField &ff, const double dt)
 {
     auto iter_fs = box.fs.cbegin();

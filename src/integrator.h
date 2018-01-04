@@ -1,5 +1,5 @@
 #include "conf.h"
-#include "forcefield.h"
+#include "params.h"
 
 #ifndef INTEGRATOR_H
 #define INTEGRATOR_H

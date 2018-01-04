@@ -3,7 +3,7 @@
 #include "tests/utils.h"
 
 #include "src/conf.h"
-#include "src/forcefield.h"
+#include "src/params.h"
 #include "src/integrator.h"
 
 using namespace std;
