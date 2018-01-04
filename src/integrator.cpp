@@ -48,7 +48,6 @@ static dRVec calc_distance_different_boxes(const std::vector<real>& from_xs,
     return dr;
 }
 
-
 static RVec calc_force_between_atoms(const dRVec&      dr,
                                      const ForceField& ff)
 {
@@ -71,8 +70,7 @@ static RVec calc_force_between_atoms(const dRVec&      dr,
     return force_vec;
 }
 
-
-void calc_forces_internal(Box& box, const ForceField &ff)
+void calc_forces_internal(Box& box, const ForceField& ff)
 {
     for (unsigned i = 0; i < box.num_atoms() - 1; ++i)
     {
@@ -90,7 +88,7 @@ void calc_forces_internal(Box& box, const ForceField &ff)
     }
 }
 
-void calc_forces_from_to_box(Box& from_box, Box& to_box, const ForceField &ff)
+void calc_forces_from_to_box(Box& from_box, Box& to_box, const ForceField& ff)
 {
     const auto shift = calc_shift_between_boxes(from_box, to_box);
 
