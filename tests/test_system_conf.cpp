@@ -18,6 +18,7 @@ ADD_TEST(test_box_init,
     ASSERT_EQ(box.xs.size(), 0, "number of position elements is not 0");
     ASSERT_EQ(box.vs.size(), 0, "number of velocity elements is not 0");
     ASSERT_EQ(box.fs.size(), 0, "number of force elements is not 0");
+    ASSERT_EQ(box.fs_prev.size(), 0, "number of force (prev) elements is not 0");
     ASSERT_EQ(box.xs.capacity(), 9, "capacity of vector is not 3 * 3 elems as input");
 
     ASSERT_EQ_VEC(box.origin, origin, "box origin is not set correctly");
@@ -33,6 +34,7 @@ ADD_TEST(test_box_add_atom,
     ASSERT_EQ(box.xs.size(), 6, "wrong number of position elements");
     ASSERT_EQ(box.vs.size(), 6, "wrong number of velocity elements");
     ASSERT_EQ(box.fs.size(), 6, "wrong number of force elements");
+    ASSERT_EQ(box.fs_prev.size(), 6, "wrong number of force (prev) elements");
 
     const vector<double> xs {1.0, 2.0, 3.0, 1.0, 2.0, 3.0};
     const vector<double> zs {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
@@ -40,6 +42,7 @@ ADD_TEST(test_box_add_atom,
     ASSERT_EQ_VEC(box.xs, xs, "added atom positions are not those input");
     ASSERT_EQ_VEC(box.vs, zs, "added atom velocities are not zero-initialized");
     ASSERT_EQ_VEC(box.fs, zs, "added atom forces are not zero-initialized");
+    ASSERT_EQ_VEC(box.fs_prev, zs, "added atom forces (prev) are not zero-initialized");
 )
 
 ADD_TEST(test_system_init,
@@ -95,6 +98,7 @@ ADD_TEST(test_system_read_grofile,
     const vector<double> zeroes (9, 0.0);
     ASSERT_EQ_VEC(system.boxes[0].vs, zeroes, "velocities are not zero-initialized");
     ASSERT_EQ_VEC(system.boxes[0].fs, zeroes, "forces are not zero-initialized");
+    ASSERT_EQ_VEC(system.boxes[0].fs_prev, zeroes, "forces (prev) are not zero-initialized");
 
     const array<double, 3> box_size { 216.00000, 4.67650, 110.00000 };
     ASSERT_EQ_VEC(system.box_size, box_size, "incorrect box size set to system");

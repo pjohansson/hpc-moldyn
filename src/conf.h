@@ -37,6 +37,7 @@ public:
     std::vector<real> xs; // Positions (x), 1 elem per dimension: relative to the origin
     std::vector<real> vs; // Velocities (v)
     std::vector<real> fs; // Forces (f)
+    std::vector<real> fs_prev; // Forces at previous step for Velocity Verlet
 
     // Box origin.
     RVec origin;

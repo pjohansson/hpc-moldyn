@@ -41,6 +41,7 @@ void Box::add_atom(const real x, const real y, const real z)
     {
         vs.push_back(0.0);
         fs.push_back(0.0);
+        fs_prev.push_back(0.0);
     }
 
     ++natoms;
