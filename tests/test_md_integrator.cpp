@@ -15,7 +15,7 @@ constexpr ForceField TestFF (
     2.0  // mass
 );
 
-constexpr real DT {5e-3};
+constexpr double DT {5e-3};
 
 ADD_TEST(test_calc_force,
     Box box (2, RVec {0.0, 0.0, 0.0}, RVec{1.0, 1.0, 1.0});
@@ -91,7 +91,7 @@ ADD_TEST(test_calc_force_between_two_boxes,
     ASSERT_EQ_VEC(box2.fs, expected2, "forces are not calculated correctly");
 )
 
-ADD_TEST(test_update_velocity,
+ADD_TEST(test_update_velocities,
     Box box (2, RVec {0.0, 0.0, 0.0}, RVec{1.0, 1.0, 1.0});
 
     box.add_atom(0.0, 0.0, 0.0);
@@ -130,10 +130,38 @@ ADD_TEST(test_update_velocity,
     ASSERT_EQ_VEC(box.vs, expected, "velocities are not updated correctly");
 )
 
+ADD_TEST(test_update_positions,
+    Box box (1, RVec {0.0, 0.0, 0.0}, RVec{1.0, 1.0, 1.0});
+
+    box.add_atom(1.0, 2.0, 3.0);
+
+    constexpr real force = 5e-1;
+    constexpr real velocity = 5.0 * force;
+    constexpr real expected_dx =
+        velocity * DT + 0.5 * (force / TestFF.mass) * DT * DT;
+
+
+    vector<real> expected;
+    for (const auto& x0 : box.xs)
+    {
+        expected.push_back(x0 + expected_dx);
+    }
+
+    const vector<real> fs (box.xs.size(), force);
+    const vector<real> vs (box.xs.size(), velocity);
+    box.vs = vs;
+    box.fs = fs;
+
+    update_positions_box(box, TestFF, DT);
+
+    ASSERT_EQ_VEC(box.xs, expected, "positions are not updated correctly");
+)
+
 RUN_TESTS(
     test_calc_force();
     test_calc_force_outside_of_rcut_is_zero();
     test_calc_force_adds_total_force();
     test_calc_force_between_two_boxes();
-    test_update_velocity();
+    test_update_velocities();
+    test_update_positions();
 )
