@@ -11,7 +11,8 @@ using namespace std;
 constexpr ForceField TestFF (
     1.0, // epsilon
     1.0, // sigma
-    1.1  // rcut
+    1.1, // rcut
+    2.0  // mass
 );
 
 ADD_TEST(test_calc_force,
