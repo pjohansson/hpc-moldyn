@@ -129,7 +129,7 @@ void calc_forces_from_to_box(Box& from_box, Box& to_box, const ForceField& ff)
 
 // Update all the positions inside a box using the Velocity Verlet
 // integration scheme.
-void update_positions_box(Box& box, const ForceField &ff, const double dt)
+void update_positions_box(Box& box, const ForceField &ff, const Options& opts)
 {
     auto iter_vs = box.vs.cbegin();
     auto iter_fs = box.fs.cbegin();
@@ -138,13 +138,13 @@ void update_positions_box(Box& box, const ForceField &ff, const double dt)
 
     for (auto& x : box.xs)
     {
-        x += *iter_vs++ * dt + *iter_fs++ * dt * dt / divisor;
+        x += *iter_vs++ * opts.dt + *iter_fs++ * opts.dt2 / divisor;
     }
 }
 
-// Update all the velocities inside a box using the Velocity Verlet 
+// Update all the velocities inside a box using the Velocity Verlet
 // integration scheme.
-void update_velocities_box(Box& box, const ForceField &ff, const double dt)
+void update_velocities_box(Box& box, const ForceField &ff, const Options& opts)
 {
     auto iter_fs = box.fs.cbegin();
     auto iter_fs_prev = box.fs_prev.cbegin();
@@ -154,6 +154,6 @@ void update_velocities_box(Box& box, const ForceField &ff, const double dt)
     for (auto& v : box.vs)
     {
         const auto a = (*iter_fs++ + *iter_fs_prev++) / avg_divisor;
-        v += a * dt;
+        v += a * opts.dt;
     }
 }
