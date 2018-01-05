@@ -76,8 +76,7 @@ static RVec calc_force_between_atoms(const dRVec&      dr,
 }
 
 // Add the forces from internal interactions within a single box.
-static void
-calc_forces_internal(Box& box, const ForceField& ff)
+static void calc_forces_internal(Box& box, const ForceField& ff)
 {
     for (unsigned i = 0; i < box.num_atoms() - 1; ++i)
     {
@@ -103,8 +102,9 @@ calc_forces_internal(Box& box, const ForceField& ff)
 // interact once with each other), making the calculation N log N. Since
 //  box-to-box calculations contain no duplicate atoms, we must always count
 // the full N * M interactions.
-static void
-calc_forces_from_to_box(Box& from_box, Box& to_box, const ForceField& ff)
+static void calc_forces_from_to_box(Box& from_box,
+                                    Box& to_box,
+                                    const ForceField& ff)
 {
     const auto shift = calc_shift_between_boxes(from_box, to_box);
 
@@ -131,8 +131,9 @@ calc_forces_from_to_box(Box& from_box, Box& to_box, const ForceField& ff)
 
 // Update all the positions inside a box using the Velocity Verlet
 // integration scheme.
-static void
-update_positions_box(Box& box, const ForceField &ff, const Options& opts)
+static void update_positions_box(Box& box,
+                                 const ForceField &ff,
+                                 const Options& opts)
 {
     auto iter_vs = box.vs.cbegin();
     auto iter_fs = box.fs.cbegin();
@@ -147,8 +148,9 @@ update_positions_box(Box& box, const ForceField &ff, const Options& opts)
 
 // Update all the velocities inside a box using the Velocity Verlet
 // integration scheme.
-static void
-update_velocities_box(Box& box, const ForceField &ff, const Options& opts)
+static void update_velocities_box(Box& box,
+                                  const ForceField &ff,
+                                  const Options& opts)
 {
     auto iter_fs = box.fs.cbegin();
     auto iter_fs_prev = box.fs_prev.cbegin();
@@ -162,9 +164,21 @@ update_velocities_box(Box& box, const ForceField &ff, const Options& opts)
     }
 }
 
-static void
-reset_forces_box(Box& box)
+static void reset_forces_box(Box& box)
 {
     box.fs.swap(box.fs_prev);
     box.fs.assign(box.fs.size(), 0.0);
+}
+
+void run_velocity_verlet(System& system,
+                         const ForceField& ff,
+                         const Options& opts)
+{
+    for (auto& box : system.boxes)
+    {
+        update_positions_box(box, ff, opts);
+        reset_forces_box(box);
+        calc_forces_internal(box, ff);
+        update_velocities_box(box, ff, opts);
+    }
 }

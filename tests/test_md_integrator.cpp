@@ -183,6 +183,48 @@ ADD_TEST(test_reset_forces_sets_current_to_previous_and_resets,
     ASSERT_EQ(p0, p1, "the forces were copied instead of moved");
 )
 
+ADD_TEST(test_velocity_verlet_step_single_box,
+    const std::string title = "Test";
+    const RVec box_size {1.0, 1.0, 1.0};
+    auto system = System(title, box_size);
+
+    auto box = Box(2, RVec {0.0, 0.0, 0.0}, box_size);
+    box.add_atom(0.0, 0.0, 0.0);
+    box.add_atom(1.0, 0.0, 0.0);
+
+    // Calculate the initial forces
+    calc_forces_internal(box, TestFF);
+
+    // Add an independent copy of the initial state to the system
+    system.boxes.push_back(box);
+
+    // Run two steps through the Velocity Verlet scheme manually and using
+    // the function to ensure that the functionality is correct.
+
+    // Currently: x0, v0, f0, _ (prev forces empty)
+    update_positions_box(box, TestFF, TestOpts);  // x1, v0, f0, _
+    reset_forces_box(box);                        // x1, v0,  _, f0
+    calc_forces_internal(box, TestFF);            // x1, v0, f1, f0
+    update_velocities_box(box, TestFF, TestOpts); // x1, v1, f1, f0
+    update_positions_box(box, TestFF, TestOpts);  // x2, v1, f1, f0
+    reset_forces_box(box);                        // x2, v1,  _, f1
+    calc_forces_internal(box, TestFF);            // x2, v1, f2, f1
+    update_velocities_box(box, TestFF, TestOpts); // x2, v2, f2, f1
+
+    // With the function
+    run_velocity_verlet(system, TestFF, TestOpts);
+    run_velocity_verlet(system, TestFF, TestOpts);
+
+    ASSERT_EQ_VEC(system.boxes[0].xs, box.xs,
+        "positions were not updated correctly");
+    ASSERT_EQ_VEC(system.boxes[0].vs, box.vs,
+        "velocities were not updated correctly");
+    ASSERT_EQ_VEC(system.boxes[0].fs, box.fs,
+        "forces were not updated correctly");
+    ASSERT_EQ_VEC(system.boxes[0].fs_prev, box.fs_prev,
+        "previous forces were not updated correctly");
+)
+
 RUN_TESTS(
     test_calc_force();
     test_calc_force_outside_of_rcut_is_zero();
@@ -190,5 +232,6 @@ RUN_TESTS(
     test_calc_force_between_two_boxes();
     test_update_velocities();
     test_update_positions();
+    test_velocity_verlet_step_single_box();
     test_reset_forces_sets_current_to_previous_and_resets();
 )
