@@ -157,6 +157,32 @@ ADD_TEST(test_update_positions,
     ASSERT_EQ_VEC(box.xs, expected, "positions are not updated correctly");
 )
 
+ADD_TEST(test_reset_forces_sets_current_to_previous_and_resets,
+    auto box = Box(2, RVec {0.0, 0.0, 0.0}, RVec {1.0, 1.0, 1.0});
+    box.add_atom(0.0, 0.0, 0.0);
+    box.add_atom(1.0, 0.0, 0.0);
+
+    constexpr real force = 1.0;
+    const vector<real> fs (box.xs.size(), force);
+
+    // Also set the previous forces to non-zero values which should be discarded
+    constexpr real force_prev = 0.5 * force;
+    const vector<real> fs_prev (box.xs.size(), force_prev);
+
+    box.fs = fs;
+    box.fs_prev = fs_prev;
+
+    const auto p0 = box.fs.data();
+    reset_forces_box(box);
+    const auto p1 = box.fs_prev.data();
+
+    const vector<real> zeroes (box.xs.size(), 0.0);
+
+    ASSERT_EQ_VEC(box.fs, zeroes, "forces were not set to zero");
+    ASSERT_EQ_VEC(box.fs_prev, fs, "previous forces were not set to the current");
+    ASSERT_EQ(p0, p1, "the forces were copied instead of moved");
+)
+
 RUN_TESTS(
     test_calc_force();
     test_calc_force_outside_of_rcut_is_zero();
@@ -164,4 +190,5 @@ RUN_TESTS(
     test_calc_force_between_two_boxes();
     test_update_velocities();
     test_update_positions();
+    test_reset_forces_sets_current_to_previous_and_resets();
 )

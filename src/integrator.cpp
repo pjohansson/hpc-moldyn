@@ -161,3 +161,10 @@ update_velocities_box(Box& box, const ForceField &ff, const Options& opts)
         v += a * opts.dt;
     }
 }
+
+static void
+reset_forces_box(Box& box)
+{
+    box.fs.swap(box.fs_prev);
+    box.fs.assign(box.fs.size(), 0.0);
+}
