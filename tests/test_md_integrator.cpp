@@ -4,7 +4,7 @@
 
 #include "src/conf.h"
 #include "src/params.h"
-#include "src/integrator.h"
+#include "src/integrator.cpp"
 
 using namespace std;
 
