@@ -29,6 +29,7 @@ Box::Box(const uint64_t capacity, const RVec origin, const RVec size)
     xs.reserve(NDIM * capacity);
     vs.reserve(NDIM * capacity);
     fs.reserve(NDIM * capacity);
+    fs_prev.reserve(NDIM * capacity);
 }
 
 void Box::add_atom(const real x, const real y, const real z)
