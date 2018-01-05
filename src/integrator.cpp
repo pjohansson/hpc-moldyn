@@ -5,6 +5,7 @@
 // Equal to `RVec` but with the distance squared added as a final element.
 using dRVec = std::array<real, NDIM + 1>;
 
+// Simply return the difference between the two boxes origins.
 static RVec calc_shift_between_boxes(const Box& from_box, const Box& to_box)
 {
     RVec shift {0.0, 0.0, 0.0};
@@ -164,6 +165,8 @@ static void update_velocities_box(Box& box,
     }
 }
 
+// Move the current forces in box.fs to box.fs_prev and then set
+// all values in box.fs to 0.
 static void reset_forces_box(Box& box)
 {
     box.fs.swap(box.fs_prev);
