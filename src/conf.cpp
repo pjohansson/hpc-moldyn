@@ -82,7 +82,7 @@ System read_conf_from_grofile(const std::string& path)
     box.size = box_size;
 
     auto system = System(title, box_size);
-    system.boxes.push_back(box);
+    system.boxes.push_back(std::move(box));
 
     return system;
 }
