@@ -23,6 +23,8 @@ ADD_TEST(test_box_init,
 
     ASSERT_EQ_VEC(box.origin, origin, "box origin is not set correctly");
     ASSERT_EQ_VEC(box.size, size, "box size is not set correctly");
+
+    ASSERT_EQ(box.to_neighbours.size(), 0, "boxes are not initialized with zero neighbours as they should be");
 )
 
 ADD_TEST(test_box_add_atom,

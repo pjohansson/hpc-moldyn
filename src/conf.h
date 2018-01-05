@@ -45,6 +45,13 @@ public:
     // Box size.
     RVec size;
 
+    // Neighbouring boxes indices in a collection (ie. a `System` struct)
+    // which this box will interact with and add forces *to*. Since the force
+    // calculation is symmetric we only have to calculate it once, going
+    // *from* a box *to* another. Thus all boxes in this collection should
+    // not have this box's index in its corresponding `to_neighbours` object.
+    std::vector<size_t> to_neighbours;
+
 private:
     uint64_t natoms;
 };

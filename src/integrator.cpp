@@ -178,7 +178,22 @@ void run_velocity_verlet(System& system,
     {
         update_positions_box(box, ff, opts);
         reset_forces_box(box);
+    }
+
+    // The force calculation is in a separate iteration since
+    // it is not local to each box, which resetting the forces
+    // in each iteration will mess up.
+    for (auto& box : system.boxes)
+    {
         calc_forces_internal(box, ff);
+        for (const auto& i : box.to_neighbours)
+        {
+            calc_forces_from_to_box(box, system.boxes.at(i), ff);
+        }
+    }
+
+    for (auto& box : system.boxes)
+    {
         update_velocities_box(box, ff, opts);
     }
 }

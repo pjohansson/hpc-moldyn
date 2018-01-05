@@ -225,6 +225,91 @@ ADD_TEST(test_velocity_verlet_step_single_box,
         "previous forces were not updated correctly");
 )
 
+ADD_TEST(test_velocity_verlet_step_box_with_a_neighbour,
+    const std::string title = "Test";
+    const RVec box_size {2.0, 1.0, 1.0};
+    auto system = System(title, box_size);
+
+    // Two boxes separated by 1 along the x axis
+    auto box1 = Box(2, RVec {0.0, 0.0, 0.0}, RVec {1.0, 1.0, 1.0});
+    auto box2 = Box(2, RVec {1.0, 0.0, 0.0}, RVec {1.0, 1.0, 1.0});
+    box1.add_atom(0.0, 0.0, 0.0);
+    box2.add_atom(0.0, 0.0, 0.0);
+
+    // Calculate the initial forces (no internal interactions)
+    calc_forces_from_to_box(box1, box2, TestFF);
+
+    // Copy them to the system as index 0 and 1
+    system.boxes.push_back(box1);
+    system.boxes.push_back(box2);
+
+    // box1 will interact with the second box
+    system.boxes[0].to_neighbours.push_back(1);
+
+    // Run through one step of the Velocity Verlet scheme manually
+    // for both boxes
+    update_positions_box(box1, TestFF, TestOpts);
+    update_positions_box(box2, TestFF, TestOpts);
+    reset_forces_box(box1);
+    reset_forces_box(box2);
+    calc_forces_from_to_box(box1, box2, TestFF); // still the only interaction
+    update_velocities_box(box1, TestFF, TestOpts);
+    update_velocities_box(box2, TestFF, TestOpts);
+
+    // With the function
+    run_velocity_verlet(system, TestFF, TestOpts);
+
+    ASSERT_EQ_VEC(system.boxes[0].xs, box1.xs,
+        "positions were not updated correctly in box1");
+    ASSERT_EQ_VEC(system.boxes[1].xs, box2.xs,
+        "positions were not updated correctly in box2");
+    ASSERT_EQ_VEC(system.boxes[0].vs, box1.vs,
+        "velocities were not updated correctly in box1");
+    ASSERT_EQ_VEC(system.boxes[1].vs, box2.vs,
+        "velocities were not updated correctly in box2");
+    ASSERT_EQ_VEC(system.boxes[0].fs, box1.fs,
+        "forces were not updated correctly in box1");
+    ASSERT_EQ_VEC(system.boxes[1].fs, box2.fs,
+        "forces were not updated correctly in box2");
+    ASSERT_EQ_VEC(system.boxes[0].fs_prev, box1.fs_prev,
+        "previous forces were not updated correctly in box1");
+    ASSERT_EQ_VEC(system.boxes[1].fs_prev, box2.fs_prev,
+        "previous forces were not updated correctly in box2");
+)
+
+ADD_TEST(test_velocity_verlet_step_box_with_no_neighbours_does_nothing,
+    const std::string title = "Test";
+    const RVec box_size {2.0, 1.0, 1.0};
+    auto system = System(title, box_size);
+
+    // Two boxes separated by 1 along the x axis
+    auto box1 = Box(2, RVec {0.0, 0.0, 0.0}, RVec {1.0, 1.0, 1.0});
+    auto box2 = Box(2, RVec {1.0, 0.0, 0.0}, RVec {1.0, 1.0, 1.0});
+    box1.add_atom(0.0, 0.0, 0.0);
+    box2.add_atom(0.0, 0.0, 0.0);
+
+    // Copy them to the system as index 0 and 1
+    system.boxes.push_back(box1);
+    system.boxes.push_back(box2);
+
+    run_velocity_verlet(system, TestFF, TestOpts);
+
+    const vector<real> zeroes (box1.xs.size(), 0.0);
+
+    ASSERT_EQ_VEC(system.boxes[0].xs, zeroes,
+        "the neighbours interacted even though they were not set as neighbours");
+    ASSERT_EQ_VEC(system.boxes[0].vs, zeroes,
+        "the neighbours interacted even though they were not set as neighbours");
+    ASSERT_EQ_VEC(system.boxes[0].fs, zeroes,
+        "the neighbours interacted even though they were not set as neighbours");
+    ASSERT_EQ_VEC(system.boxes[1].xs, zeroes,
+        "the neighbours interacted even though they were not set as neighbours");
+    ASSERT_EQ_VEC(system.boxes[1].vs, zeroes,
+        "the neighbours interacted even though they were not set as neighbours");
+    ASSERT_EQ_VEC(system.boxes[1].fs, zeroes,
+        "the neighbours interacted even though they were not set as neighbours");
+)
+
 RUN_TESTS(
     test_calc_force();
     test_calc_force_outside_of_rcut_is_zero();
@@ -233,5 +318,7 @@ RUN_TESTS(
     test_update_velocities();
     test_update_positions();
     test_velocity_verlet_step_single_box();
+    test_velocity_verlet_step_box_with_a_neighbour();
+    test_velocity_verlet_step_box_with_no_neighbours_does_nothing();
     test_reset_forces_sets_current_to_previous_and_resets();
 )
