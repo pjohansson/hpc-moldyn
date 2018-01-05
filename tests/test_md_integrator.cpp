@@ -80,7 +80,7 @@ ADD_TEST(test_calc_force_between_two_boxes,
     Box box2 (1, RVec {1.0, 0.0, 0.0}, size); // shifted 1 along x
     box2.add_atom(0.0, 0.0, 0.0);
 
-    calc_forces_from_to_box(box1, box2, TestFF);
+    calc_forces_box_to_box(box1, box2, TestFF);
 
     const auto force = 24.0; // epsilon = 24, sigma = 1, dr = 1 (along x only)
 
@@ -237,7 +237,7 @@ ADD_TEST(test_velocity_verlet_step_box_with_a_neighbour,
     box2.add_atom(0.0, 0.0, 0.0);
 
     // Calculate the initial forces (no internal interactions)
-    calc_forces_from_to_box(box1, box2, TestFF);
+    calc_forces_box_to_box(box1, box2, TestFF);
 
     // Copy them to the system as index 0 and 1
     system.boxes.push_back(box1);
@@ -252,7 +252,7 @@ ADD_TEST(test_velocity_verlet_step_box_with_a_neighbour,
     update_positions_box(box2, TestFF, TestOpts);
     reset_forces_box(box1);
     reset_forces_box(box2);
-    calc_forces_from_to_box(box1, box2, TestFF); // still the only interaction
+    calc_forces_box_to_box(box1, box2, TestFF); // still the only interaction
     update_velocities_box(box1, TestFF, TestOpts);
     update_velocities_box(box2, TestFF, TestOpts);
 

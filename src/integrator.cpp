@@ -102,9 +102,9 @@ static void calc_forces_internal(Box& box, const ForceField& ff)
 // interact once with each other), making the calculation N log N. Since
 //  box-to-box calculations contain no duplicate atoms, we must always count
 // the full N * M interactions.
-static void calc_forces_from_to_box(Box& from_box,
-                                    Box& to_box,
-                                    const ForceField& ff)
+static void calc_forces_box_to_box(Box& from_box,
+                                   Box& to_box,
+                                   const ForceField& ff)
 {
     const auto shift = calc_shift_between_boxes(from_box, to_box);
 
@@ -188,7 +188,7 @@ void run_velocity_verlet(System& system,
         calc_forces_internal(box, ff);
         for (const auto& i : box.to_neighbours)
         {
-            calc_forces_from_to_box(box, system.boxes.at(i), ff);
+            calc_forces_box_to_box(box, system.boxes.at(i), ff);
         }
     }
 
