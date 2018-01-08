@@ -92,6 +92,9 @@ ADD_TEST(test_system_init,
 
     constexpr IVec shape {1, 1, 1};
     ASSERT_EQ_VEC(system.shape, shape, "shape of system is not initialized as (1, 1, 1)");
+
+    const RVec cell_size {0.0, 0.0, 0.0};
+    ASSERT_EQ_VEC(system.cell_size, cell_size, "size of cells in cell list is not initialized as zeros");
 )
 
 ADD_TEST(test_system_adds_num_atoms_from_lists,
@@ -181,7 +184,7 @@ ADD_TEST(test_split_system_into_lists_of_size_2x_rcut_gives_correct_shape,
     const auto dx = box_size[XX] / nx;
     const auto dy = box_size[YY] / ny;
     const auto dz = box_size[ZZ] / nz;
-    const auto small_box_size = RVec {dx, dy, dz};
+    const auto cell_size = RVec {dx, dy, dz};
 
     auto system = System(title, box_size);
     create_cell_lists(system, rcut);
@@ -204,11 +207,17 @@ ADD_TEST(test_split_system_into_lists_of_size_2x_rcut_gives_correct_shape,
                 ASSERT_EQ_VEC(origin, system.cell_lists[i].origin,
                     "the system cell lists are not correctly ordered or "
                     "the origin is not set correctly in all of them");
-                ASSERT_EQ_VEC(small_box_size, system.cell_lists[i].size,
-                    "the system cell lists are not set to the correct box size");
+                ASSERT_EQ_VEC(cell_size, system.cell_lists[i].size,
+                    "the system cell lists are not set to the correct size");
             }
         }
     }
+
+    ASSERT_EQ_VEC(system.cell_size, cell_size,
+        "the system cell lists are not set to the correct size in the `System`");
+
+    ASSERT_EQ(system.cell_lists.capacity(), system.cell_lists.size(),
+        "unnecessary memory has been reserved for the cell list collection");
 )
 
 ADD_TEST(test_split_system_into_lists_creates_minimum_one_per_size,

@@ -7,6 +7,7 @@
 System::System(const std::string& title, const RVec box_size)
     :box_size { box_size },
      shape { IVec {1, 1, 1} },
+     cell_size { RVec {0.0, 0.0, 0.0} },
      title { title }
 {
 }
@@ -175,7 +176,8 @@ void create_cell_lists(System& system, const real rcut)
     const auto dx = system.box_size[XX] / nx;
     const auto dy = system.box_size[YY] / ny;
     const auto dz = system.box_size[ZZ] / nz;
-    const auto box_size = RVec {dx, dy, dz};
+    const auto cell_size = RVec {dx, dy, dz};
+    system.cell_size = cell_size;
 
     std::vector<CellList> split_lists;
     for (unsigned ix = 0; ix < nx; ++ix)
@@ -185,7 +187,7 @@ void create_cell_lists(System& system, const real rcut)
             for (unsigned iz = 0; iz < nz; ++iz)
             {
                 const auto origin = RVec {ix * dx, iy * dy, iz * dz};
-                const auto list = CellList(system.num_atoms(), origin, box_size);
+                const auto list = CellList(system.num_atoms(), origin, cell_size);
 
                 split_lists.push_back(std::move(list));
             }

@@ -94,6 +94,9 @@ public:
     // System shape.
     IVec shape;
 
+    // Size of cells in cell list.
+    RVec cell_size;
+
     // Title of system.
     std::string title;
 };
