@@ -79,6 +79,13 @@ public:
     * Variables *
     *************/
     // The system is split into (maybe) several boxes containing the atoms.
+    //
+    // If there are several boxes, they should be non-overlapping
+    // and added to this collection in the order of ZYX, meaning that
+    // the indexing increases fastest along Z and slowest along X.
+    //
+    // The vector index of the box at (ix, iy, iz) thus is calculated as
+    // i = ix * ny * nz + iy * nz + iz.
     std::vector<Box> boxes;
 
     // System box size.
@@ -96,5 +103,7 @@ System read_conf_from_grofile(const std::string& filename);
 
 // Write the configuration to a Gromos formatted file.
 void write_conf_to_grofile(const System& system, const std::string& path);
+
+void split_system_into_boxes(System& system, const real rcut);
 
 #endif // SYSTEM_CONF_H

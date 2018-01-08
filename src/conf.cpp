@@ -1,3 +1,4 @@
+#include <cmath>
 #include <fstream>
 #include <iomanip>
 
@@ -147,4 +148,81 @@ void write_conf_to_grofile(const System& system, const std::string& path)
     out << std::setw(9) << std::right << system.box_size[0] << ' '
         << std::setw(9) << system.box_size[1] << ' '
         << std::setw(9) << system.box_size[2] << '\n';
+}
+
+static size_t get_index_within_limits(const real x0,
+                                      const real bin_size,
+                                      const size_t num_bins)
+{
+    const auto i = static_cast<int>(floor(x0 / bin_size));
+
+    return static_cast<size_t>(std::max(0, std::min((int) num_bins - 1, i)));
+}
+
+void split_system_into_boxes(System& system, const real rcut)
+{
+    const real target_size = 2.0 * rcut;
+
+    const auto nx = std::max((uint64_t) 1, static_cast<uint64_t>(
+        floor(system.box_size[XX] / target_size)));
+    const auto ny = std::max((uint64_t) 1, static_cast<uint64_t>(
+        floor(system.box_size[YY] / target_size)));
+    const auto nz = std::max((uint64_t) 1, static_cast<uint64_t>(
+        floor(system.box_size[ZZ] / target_size)));
+
+    system.shape = IVec {nx, ny, nz};
+
+    const auto dx = system.box_size[XX] / nx;
+    const auto dy = system.box_size[YY] / ny;
+    const auto dz = system.box_size[ZZ] / nz;
+    const auto box_size = RVec {dx, dy, dz};
+
+    std::vector<Box> split_boxes;
+    for (unsigned ix = 0; ix < nx; ++ix)
+    {
+        for (unsigned iy = 0; iy < ny; ++iy)
+        {
+            for (unsigned iz = 0; iz < nz; ++iz)
+            {
+                const auto origin = RVec {ix * dx, iy * dy, iz * dz};
+                const auto box = Box(system.num_atoms(), origin, box_size);
+
+                split_boxes.push_back(std::move(box));
+            }
+        }
+    }
+
+    for (const auto& box : system.boxes)
+    {
+        for (unsigned i = 0; i < box.num_atoms(); ++i)
+        {
+            const auto atom = box.get_atom(i);
+            const auto x0 = box.origin[XX] + atom.xs[XX];
+            const auto y0 = box.origin[YY] + atom.xs[YY];
+            const auto z0 = box.origin[ZZ] + atom.xs[ZZ];
+
+            // Ensure that they are placed in a box inside the system,
+            // with minimum index 0 and maximum n - 1
+            const auto ix = get_index_within_limits(x0, dx, nx);
+            const auto iy = get_index_within_limits(y0, dy, ny);
+            const auto iz = get_index_within_limits(z0, dz, nz);
+
+            const auto to_index = ix * ny * nz + iy * nz + iz;
+
+            const auto& origin = split_boxes.at(to_index).origin;
+            split_boxes.at(to_index).add_atom(
+                x0 - origin[XX], y0 - origin[YY], z0 - origin[ZZ]
+            );
+        }
+    }
+
+    for (auto& box : split_boxes)
+    {
+        box.xs.shrink_to_fit();
+        box.vs.shrink_to_fit();
+        box.fs.shrink_to_fit();
+        box.fs_prev.shrink_to_fit();
+    }
+
+    system.boxes = std::move(split_boxes);
 }

@@ -1,4 +1,5 @@
 #include <array>
+#include <cmath>
 #include <string>
 #include <vector>
 
@@ -167,6 +168,160 @@ ADD_TEST(test_system_write_grofile,
     ASSERT_EQ_VEC(system.boxes[0].xs, xs, "positions were not written correctly");
 )
 
+ADD_TEST(test_split_system_into_boxes_of_size_2x_rcut_gives_correct_shape,
+    const std::string title {"title of system"};
+    const RVec box_size {10.0, 20.0, 30.0};
+    const float rcut = 1.1;
+
+    const auto nx = static_cast<uint64_t>(floor(box_size[XX] / (2.0 * rcut)));
+    const auto ny = static_cast<uint64_t>(floor(box_size[YY] / (2.0 * rcut)));
+    const auto nz = static_cast<uint64_t>(floor(box_size[ZZ] / (2.0 * rcut)));
+    const auto expected_shape = IVec {nx, ny, nz};
+
+    const auto dx = box_size[XX] / nx;
+    const auto dy = box_size[YY] / ny;
+    const auto dz = box_size[ZZ] / nz;
+    const auto small_box_size = RVec {dx, dy, dz};
+
+    auto system = System(title, box_size);
+    split_system_into_boxes(system, rcut);
+
+    ASSERT_EQ_VEC(system.shape, expected_shape, "system does not split into the correct shape");
+    ASSERT_EQ(nx * ny * nz, system.boxes.size(), "system does not split into the correct number of boxes");
+
+    for (unsigned ix = 0; ix < nx; ++ix)
+    {
+        for (unsigned iy = 0; iy < ny; ++iy)
+        {
+            for (unsigned iz = 0; iz < nz; ++iz)
+            {
+                const auto i = ix * ny * nz + iy * nz + iz;
+                const auto x0 = ix * dx;
+                const auto y0 = iy * dy;
+                const auto z0 = iz * dz;
+                const auto origin = RVec {x0, y0, z0};
+
+                ASSERT_EQ_VEC(origin, system.boxes[i].origin,
+                    "the system boxes are not correctly ordered or "
+                    "the origin is not set correctly in all of them");
+                ASSERT_EQ_VEC(small_box_size, system.boxes[i].size,
+                    "the system boxes are not set to the correct box size");
+            }
+        }
+    }
+)
+
+ADD_TEST(test_split_system_into_boxes_creates_minimum_one_per_size,
+    const std::string title {"title of system"};
+    const RVec box_size {1.0, 1.0, 1.0};
+    const float rcut = 1.1;
+
+    auto system = System(title, box_size);
+    split_system_into_boxes(system, rcut);
+
+    const auto shape = IVec {1, 1, 1};
+    ASSERT_EQ_VEC(shape, system.shape,
+        "system does not split into a minimum of one box per side "
+        "which it should");
+    ASSERT_EQ(1, system.boxes.size(),
+        "system does not split into a minimum of one box per side "
+        "which it should");
+    ASSERT_EQ_VEC(box_size, system.boxes[0].size,
+        "splitting into a single box per side gives incorrect box sizes");
+
+    const auto origin = RVec {0.0, 0.0, 0.0};
+    ASSERT_EQ_VEC(origin, system.boxes[0].origin,
+        "splitting into a single box per side gives incorrect origin");
+)
+
+ADD_TEST(test_split_system_puts_atoms_in_correct_boxes,
+    const std::string title {"title of system"};
+    const RVec box_size {4.1, 1.0, 1.0}; // split into (2, 1, 1)
+    const float rcut = 1.0;
+
+    const auto expected_shape = IVec {2, 1, 1};
+
+    const auto dx = box_size[XX] / 2;
+    const auto dy = box_size[YY];
+    const auto dz = box_size[ZZ];
+    const auto small_box_size = RVec {dx, dy, dz};
+
+    // The system has three boxes (of the same size, just to ensure that
+    // they are properly collapsed) with one atom each, one of which should
+    // be in the second box of the final system.
+
+    auto box1 = Box(1, RVec {0.0, 0.0, 0.0}, box_size);
+    box1.add_atom(dx / 2.0, dy / 2.0, dy / 2.0); // Should be in the first box
+
+    auto box2 = Box(1, RVec {0.0, 0.0, 0.0}, box_size);
+    box2.add_atom(dx / 3.0, dy / 2.0, dy / 2.0); // Should be in the first box
+
+    auto box3 = Box(1, RVec {0.0, 0.0, 0.0}, box_size);
+    box3.add_atom(1.5 * dx, dy / 2.0, dy / 2.0); // Should be in the second box
+
+    auto system = System(title, box_size);
+    system.boxes.push_back(box1);
+    system.boxes.push_back(box2);
+    system.boxes.push_back(box3);
+
+    split_system_into_boxes(system, rcut);
+
+    ASSERT_EQ_VEC(system.shape, expected_shape,
+        "this tests hard coded parameters do not give the expected shape, "
+        "fix *the test*");
+
+    ASSERT_EQ(system.boxes[0].num_atoms(), 2,
+        "the first box does not contain the correct number of atoms");
+    ASSERT_EQ(system.boxes[1].num_atoms(), 1,
+        "the second box does not contain the correct number of atoms");
+
+    // First box is at (0, 0, 0) so these coordinates do not have to be shifted.
+    const auto xs1 = vector<real> {
+        dx / 2.0, dy / 2.0, dz / 2.0,
+        dx / 3.0, dy / 2.0, dz / 2.0
+    };
+    const auto zeroes1 = vector<real>(6, 0.0);
+    ASSERT_EQ_VEC(system.boxes[0].xs, xs1,
+        "atom coordinates are not set correctly when splitting");
+    ASSERT_EQ_VEC(system.boxes[0].vs, zeroes1,
+        "atom velocities are not set correctly when splitting");
+    ASSERT_EQ_VEC(system.boxes[0].fs, zeroes1,
+        "atom forces are not set correctly when splitting");
+    ASSERT_EQ_VEC(system.boxes[0].fs_prev, zeroes1,
+        "atom forces (prev) are not set correctly when splitting");
+
+    // Second box is at (small_box_size[XX], 0, 0) so we need to adjust
+    // the x coordinate from that in absolute space to relative
+    const auto xs2 = vector<real> {1.5 * dx - small_box_size[XX], dy / 2.0, dz / 2.0};
+    const auto zeroes2 = vector<real>(3, 0.0);
+    ASSERT_EQ_VEC(system.boxes[1].xs, xs2,
+        "atom coordinates are not set correctly when splitting");
+    ASSERT_EQ_VEC(system.boxes[1].vs, zeroes2,
+        "atom velocities are not set correctly when splitting");
+    ASSERT_EQ_VEC(system.boxes[1].fs, zeroes2,
+        "atom forces are not set correctly when splitting");
+    ASSERT_EQ_VEC(system.boxes[1].fs_prev, zeroes2,
+        "atom forces (prev) are not set correctly when splitting");
+
+    // Ensure that we use the correct amount of memory
+    ASSERT_EQ(system.boxes[0].xs.size(), system.boxes[0].xs.capacity(),
+        "after readding the atoms the reserved memory has not been minimized");
+    ASSERT_EQ(system.boxes[0].vs.size(), system.boxes[0].vs.capacity(),
+        "after readding the atoms the reserved memory has not been minimized");
+    ASSERT_EQ(system.boxes[0].fs.size(), system.boxes[0].fs.capacity(),
+        "after readding the atoms the reserved memory has not been minimized");
+    ASSERT_EQ(system.boxes[0].fs_prev.size(), system.boxes[0].fs_prev.capacity(),
+        "after readding the atoms the reserved memory has not been minimized");
+    ASSERT_EQ(system.boxes[1].xs.size(), system.boxes[1].xs.capacity(),
+        "after readding the atoms the reserved memory has not been minimized");
+    ASSERT_EQ(system.boxes[1].vs.size(), system.boxes[1].vs.capacity(),
+        "after readding the atoms the reserved memory has not been minimized");
+    ASSERT_EQ(system.boxes[1].fs.size(), system.boxes[1].fs.capacity(),
+        "after readding the atoms the reserved memory has not been minimized");
+    ASSERT_EQ(system.boxes[1].fs_prev.size(), system.boxes[1].fs_prev.capacity(),
+        "after readding the atoms the reserved memory has not been minimized");
+)
+
 RUN_TESTS(
     test_box_init();
     test_box_add_atom();
@@ -175,4 +330,7 @@ RUN_TESTS(
     test_system_adds_num_atoms_from_boxes();
     test_system_read_grofile();
     test_system_write_grofile();
+    test_split_system_into_boxes_of_size_2x_rcut_gives_correct_shape();
+    test_split_system_into_boxes_creates_minimum_one_per_size();
+    test_split_system_puts_atoms_in_correct_boxes();
 );
