@@ -1,10 +1,12 @@
 #include "conf.h"
-#include "forcefield.h"
+#include "params.h"
 
 #ifndef INTEGRATOR_H
 #define INTEGRATOR_H
 
-void calc_forces_internal(Box& box, const ForceField &ff);
-void calc_forces_from_to_box(Box& from_box, Box& to_box, const ForceField &ff);
+// Run through a simulation step using the Velocity Verlet scheme.
+void run_velocity_verlet(System& system,
+                         const ForceField& ff,
+                         const Options& opts);
 
 #endif // INTEGRATOR_H

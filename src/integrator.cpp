@@ -2,8 +2,10 @@
 
 #include "integrator.h"
 
+// Equal to `RVec` but with the distance squared added as a final element.
 using dRVec = std::array<real, NDIM + 1>;
 
+// Simply return the difference between the two boxes origins.
 static RVec calc_shift_between_boxes(const Box& from_box, const Box& to_box)
 {
     RVec shift {0.0, 0.0, 0.0};
@@ -16,6 +18,7 @@ static RVec calc_shift_between_boxes(const Box& from_box, const Box& to_box)
     return shift;
 }
 
+// Calculate the distance between to atoms of input indices in a box.
 static dRVec calc_distance(const std::vector<real>& xs,
                            const size_t             from,
                            const size_t             to)
@@ -31,6 +34,9 @@ static dRVec calc_distance(const std::vector<real>& xs,
     return dr;
 }
 
+// Calculate the distance between two atoms of input indices in different
+// boxes. This is a separate function from the internal calculation since
+// they should not be confused and I do not like overloading.
 static dRVec calc_distance_different_boxes(const std::vector<real>& from_xs,
                                            const size_t             i1,
                                            const std::vector<real>& to_xs,
@@ -47,7 +53,6 @@ static dRVec calc_distance_different_boxes(const std::vector<real>& from_xs,
 
     return dr;
 }
-
 
 static RVec calc_force_between_atoms(const dRVec&      dr,
                                      const ForceField& ff)
@@ -71,8 +76,8 @@ static RVec calc_force_between_atoms(const dRVec&      dr,
     return force_vec;
 }
 
-
-void calc_forces_internal(Box& box, const ForceField &ff)
+// Add the forces from internal interactions within a single box.
+static void calc_forces_internal(Box& box, const ForceField& ff)
 {
     for (unsigned i = 0; i < box.num_atoms() - 1; ++i)
     {
@@ -90,7 +95,17 @@ void calc_forces_internal(Box& box, const ForceField &ff)
     }
 }
 
-void calc_forces_from_to_box(Box& from_box, Box& to_box, const ForceField &ff)
+// Add the forces from interactions between all atoms from one box to another.
+// This is separate from the calculation in an internal box since I do not
+// like overloading, and the functions do slightly different things: for
+// internal calculations, the interaction matrix for indices is symmetric
+// and we avoid duplicate calculations in a suitable manner (atoms only
+// interact once with each other), making the calculation N log N. Since
+//  box-to-box calculations contain no duplicate atoms, we must always count
+// the full N * M interactions.
+static void calc_forces_box_to_box(Box& from_box,
+                                   Box& to_box,
+                                   const ForceField& ff)
 {
     const auto shift = calc_shift_between_boxes(from_box, to_box);
 
@@ -112,5 +127,76 @@ void calc_forces_from_to_box(Box& from_box, Box& to_box, const ForceField &ff)
                 to_box.fs.at(j * NDIM + k) -= force[k];
             }
         }
+    }
+}
+
+// Update all the positions inside a box using the Velocity Verlet
+// integration scheme.
+static void update_positions_box(Box& box,
+                                 const ForceField &ff,
+                                 const Options& opts)
+{
+    auto iter_vs = box.vs.cbegin();
+    auto iter_fs = box.fs.cbegin();
+
+    const real divisor = 2.0 * ff.mass;
+
+    for (auto& x : box.xs)
+    {
+        x += *iter_vs++ * opts.dt + *iter_fs++ * opts.dt2 / divisor;
+    }
+}
+
+// Update all the velocities inside a box using the Velocity Verlet
+// integration scheme.
+static void update_velocities_box(Box& box,
+                                  const ForceField &ff,
+                                  const Options& opts)
+{
+    auto iter_fs = box.fs.cbegin();
+    auto iter_fs_prev = box.fs_prev.cbegin();
+
+    const real avg_divisor = 2.0 * ff.mass;
+
+    for (auto& v : box.vs)
+    {
+        const auto a = (*iter_fs++ + *iter_fs_prev++) / avg_divisor;
+        v += a * opts.dt;
+    }
+}
+
+// Move the current forces in box.fs to box.fs_prev and then set
+// all values in box.fs to 0.
+static void reset_forces_box(Box& box)
+{
+    box.fs.swap(box.fs_prev);
+    box.fs.assign(box.fs.size(), 0.0);
+}
+
+void run_velocity_verlet(System& system,
+                         const ForceField& ff,
+                         const Options& opts)
+{
+    for (auto& box : system.boxes)
+    {
+        update_positions_box(box, ff, opts);
+        reset_forces_box(box);
+    }
+
+    // The force calculation is in a separate iteration since
+    // it is not local to each box, which resetting the forces
+    // in each iteration will mess up.
+    for (auto& box : system.boxes)
+    {
+        calc_forces_internal(box, ff);
+        for (const auto& i : box.to_neighbours)
+        {
+            calc_forces_box_to_box(box, system.boxes.at(i), ff);
+        }
+    }
+
+    for (auto& box : system.boxes)
+    {
+        update_velocities_box(box, ff, opts);
     }
 }

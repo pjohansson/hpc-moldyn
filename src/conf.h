@@ -37,12 +37,20 @@ public:
     std::vector<real> xs; // Positions (x), 1 elem per dimension: relative to the origin
     std::vector<real> vs; // Velocities (v)
     std::vector<real> fs; // Forces (f)
+    std::vector<real> fs_prev; // Forces at previous step for Velocity Verlet
 
     // Box origin.
     RVec origin;
 
     // Box size.
     RVec size;
+
+    // Neighbouring boxes indices in a collection (ie. a `System` struct)
+    // which this box will interact with and add forces *to*. Since the force
+    // calculation is symmetric we only have to calculate it once, going
+    // *from* a box *to* another. Thus all boxes in this collection should
+    // not have this box's index in its corresponding `to_neighbours` object.
+    std::vector<size_t> to_neighbours;
 
 private:
     uint64_t natoms;

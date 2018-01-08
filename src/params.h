@@ -2,15 +2,17 @@
 
 #include "conf.h"
 
-#ifndef FORCE_FIELD_H
-#define FORCE_FIELD_H
+#ifndef SIMULATION_PARAMETERS_H
+#define SIMULATION_PARAMETERS_H
 
 struct ForceField {
     constexpr ForceField(const real epsilon,
                          const real sigma,
-                         const real rcut)
+                         const real rcut,
+                         const real mass)
     :epsilon { epsilon },
      sigma { sigma },
+     mass { mass },
      c6 { 24.0 * epsilon * std::pow(sigma, 6) },
      c12 { 48.0 * epsilon * std::pow(sigma, 12) },
      rcut { rcut },
@@ -19,12 +21,22 @@ struct ForceField {
 
     real epsilon,
          sigma,
+         mass,
          c6,
          c12,
          rcut,
          rcut2;
-}
+};
 
-constexpr DefaultFF = ForceField(1.0, 1.0, 1.0);
+struct Options {
+    constexpr Options(const double dt)
+    :dt { dt },
+     dt2 { dt * dt }
+    {}
 
-#endif // FORCE_FIELD_H
+    double dt, dt2;
+};
+
+constexpr ForceField DefaultFF = ForceField(1.0, 1.0, 1.0, 1.0);
+
+#endif // SIMULATION_PARAMETERS_H

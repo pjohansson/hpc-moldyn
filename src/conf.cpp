@@ -29,6 +29,7 @@ Box::Box(const uint64_t capacity, const RVec origin, const RVec size)
     xs.reserve(NDIM * capacity);
     vs.reserve(NDIM * capacity);
     fs.reserve(NDIM * capacity);
+    fs_prev.reserve(NDIM * capacity);
 }
 
 void Box::add_atom(const real x, const real y, const real z)
@@ -41,6 +42,7 @@ void Box::add_atom(const real x, const real y, const real z)
     {
         vs.push_back(0.0);
         fs.push_back(0.0);
+        fs_prev.push_back(0.0);
     }
 
     ++natoms;
@@ -81,7 +83,7 @@ System read_conf_from_grofile(const std::string& path)
     box.size = box_size;
 
     auto system = System(title, box_size);
-    system.boxes.push_back(box);
+    system.boxes.push_back(std::move(box));
 
     return system;
 }
