@@ -17,6 +17,11 @@ using real = double;
 using RVec = std::array<real, NDIM>;
 using IVec = std::array<uint64_t, NDIM>;
 
+// An atom's position, velocity and force.
+struct Atom {
+    RVec xs, vs, fs;
+};
+
 // A cubic box of atoms as a part of the whole system.
 class Box {
 public:
@@ -31,6 +36,8 @@ public:
 
     // Add an atom with input position to the system.
     void add_atom(const real x, const real y, const real z);
+
+    Atom get_atom(const size_t index);
 
     /************
     * Variables *
