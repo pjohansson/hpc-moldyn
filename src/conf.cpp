@@ -49,7 +49,7 @@ void Box::add_atom(const real x, const real y, const real z)
     ++natoms;
 }
 
-Atom Box::get_atom(const size_t index)
+Atom Box::get_atom(const size_t index) const
 {
     const Atom atom {
         RVec {

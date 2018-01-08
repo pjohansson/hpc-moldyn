@@ -37,7 +37,7 @@ public:
     // Add an atom with input position to the system.
     void add_atom(const real x, const real y, const real z);
 
-    Atom get_atom(const size_t index);
+    Atom get_atom(const size_t index) const;
 
     /************
     * Variables *
