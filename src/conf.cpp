@@ -15,15 +15,15 @@ uint64_t System::num_atoms() const
 {
     uint64_t num = 0;
 
-    for (const auto& box : boxes)
+    for (const auto& list : cell_lists)
     {
-        num += box.num_atoms();
+        num += list.num_atoms();
     }
 
     return num;
 }
 
-Box::Box(const uint64_t capacity, const RVec origin, const RVec size)
+CellList::CellList(const uint64_t capacity, const RVec origin, const RVec size)
     :origin { origin },
      size { size },
      natoms { 0 }
@@ -34,7 +34,7 @@ Box::Box(const uint64_t capacity, const RVec origin, const RVec size)
     fs_prev.reserve(NDIM * capacity);
 }
 
-void Box::add_atom(const real x, const real y, const real z)
+void CellList::add_atom(const real x, const real y, const real z)
 {
     xs.push_back(x);
     xs.push_back(y);
@@ -50,7 +50,7 @@ void Box::add_atom(const real x, const real y, const real z)
     ++natoms;
 }
 
-Atom Box::get_atom(const size_t index) const
+Atom CellList::get_atom(const size_t index) const
 {
     const Atom atom {
         RVec {
@@ -86,7 +86,7 @@ System read_conf_from_grofile(const std::string& path)
     getline(ifs, buffer);
     const auto num_atoms = static_cast<uint64_t>(stoi(buffer));
 
-    auto box = Box(num_atoms, RVec {0.0, 0.0, 0.0}, RVec {0.0, 0.0, 0.0});
+    auto list = CellList(num_atoms, RVec {0.0, 0.0, 0.0}, RVec {0.0, 0.0, 0.0});
 
     for (unsigned i = 0; i < num_atoms; ++i)
     {
@@ -96,7 +96,7 @@ System read_conf_from_grofile(const std::string& path)
         const auto y = std::stod(buffer.substr(28, 8));
         const auto z = std::stod(buffer.substr(36, 8));
 
-        box.add_atom(x, y, z);
+        list.add_atom(x, y, z);
     }
 
     getline(ifs, buffer);
@@ -105,10 +105,10 @@ System read_conf_from_grofile(const std::string& path)
     const auto dz = std::stod(buffer.substr(20, 10));
 
     const RVec box_size {dx, dy, dz};
-    box.size = box_size;
+    list.size = box_size;
 
     auto system = System(title, box_size);
-    system.boxes.push_back(std::move(box));
+    system.cell_lists.push_back(std::move(list));
 
     return system;
 }
@@ -128,17 +128,17 @@ void write_conf_to_grofile(const System& system, const std::string& path)
 
     uint64_t n = 0;
 
-    for (const auto &box : system.boxes)
+    for (const auto &list : system.cell_lists)
     {
-        for (unsigned i = 0; i < box.num_atoms(); ++i)
+        for (unsigned i = 0; i < list.num_atoms(); ++i)
         {
             out << std::setw(5) << std::right << n
                 << std::setw(5) << std::left << RESIDUE_NAME
                 << std::setw(5) << ATOM_NAME
                 << std::setw(5) << n
-                << std::setw(8) << box.xs.at(i * NDIM + XX)
-                << std::setw(8) << box.xs.at(i * NDIM + YY)
-                << std::setw(8) << box.xs.at(i * NDIM + ZZ)
+                << std::setw(8) << list.xs.at(i * NDIM + XX)
+                << std::setw(8) << list.xs.at(i * NDIM + YY)
+                << std::setw(8) << list.xs.at(i * NDIM + ZZ)
                 << '\n';
 
             ++n;
@@ -159,7 +159,7 @@ static size_t get_index_within_limits(const real x0,
     return static_cast<size_t>(std::max(0, std::min((int) num_bins - 1, i)));
 }
 
-void split_system_into_boxes(System& system, const real rcut)
+void create_cell_lists(System& system, const real rcut)
 {
     const real target_size = 2.0 * rcut;
 
@@ -177,7 +177,7 @@ void split_system_into_boxes(System& system, const real rcut)
     const auto dz = system.box_size[ZZ] / nz;
     const auto box_size = RVec {dx, dy, dz};
 
-    std::vector<Box> split_boxes;
+    std::vector<CellList> split_lists;
     for (unsigned ix = 0; ix < nx; ++ix)
     {
         for (unsigned iy = 0; iy < ny; ++iy)
@@ -185,23 +185,23 @@ void split_system_into_boxes(System& system, const real rcut)
             for (unsigned iz = 0; iz < nz; ++iz)
             {
                 const auto origin = RVec {ix * dx, iy * dy, iz * dz};
-                const auto box = Box(system.num_atoms(), origin, box_size);
+                const auto list = CellList(system.num_atoms(), origin, box_size);
 
-                split_boxes.push_back(std::move(box));
+                split_lists.push_back(std::move(list));
             }
         }
     }
 
-    for (const auto& box : system.boxes)
+    for (const auto& list : system.cell_lists)
     {
-        for (unsigned i = 0; i < box.num_atoms(); ++i)
+        for (unsigned i = 0; i < list.num_atoms(); ++i)
         {
-            const auto atom = box.get_atom(i);
-            const auto x0 = box.origin[XX] + atom.xs[XX];
-            const auto y0 = box.origin[YY] + atom.xs[YY];
-            const auto z0 = box.origin[ZZ] + atom.xs[ZZ];
+            const auto atom = list.get_atom(i);
+            const auto x0 = list.origin[XX] + atom.xs[XX];
+            const auto y0 = list.origin[YY] + atom.xs[YY];
+            const auto z0 = list.origin[ZZ] + atom.xs[ZZ];
 
-            // Ensure that they are placed in a box inside the system,
+            // Ensure that they are placed in a list inside the system,
             // with minimum index 0 and maximum n - 1
             const auto ix = get_index_within_limits(x0, dx, nx);
             const auto iy = get_index_within_limits(y0, dy, ny);
@@ -209,20 +209,20 @@ void split_system_into_boxes(System& system, const real rcut)
 
             const auto to_index = ix * ny * nz + iy * nz + iz;
 
-            const auto& origin = split_boxes.at(to_index).origin;
-            split_boxes.at(to_index).add_atom(
+            const auto& origin = split_lists.at(to_index).origin;
+            split_lists.at(to_index).add_atom(
                 x0 - origin[XX], y0 - origin[YY], z0 - origin[ZZ]
             );
         }
     }
 
-    for (auto& box : split_boxes)
+    for (auto& list : split_lists)
     {
-        box.xs.shrink_to_fit();
-        box.vs.shrink_to_fit();
-        box.fs.shrink_to_fit();
-        box.fs_prev.shrink_to_fit();
+        list.xs.shrink_to_fit();
+        list.vs.shrink_to_fit();
+        list.fs.shrink_to_fit();
+        list.fs_prev.shrink_to_fit();
     }
 
-    system.boxes = std::move(split_boxes);
+    system.cell_lists = std::move(split_lists);
 }

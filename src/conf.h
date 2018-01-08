@@ -22,16 +22,16 @@ struct Atom {
     RVec xs, vs, fs;
 };
 
-// A cubic box of atoms as a part of the whole system.
-class Box {
+// A cell of atoms as a part of the whole system.
+class CellList {
 public:
-    // Allocate memory for the box and return an empty configuration.
-    Box(const uint64_t capacity, const RVec origin, const RVec size);
+    // Allocate memory for the cell list and return an empty configuration.
+    CellList(const uint64_t capacity, const RVec origin, const RVec size);
 
     /************
     * Functions *
     *************/
-    // Return the number of atoms in the box.
+    // Return the number of atoms in the list.
     uint64_t num_atoms(void) const { return natoms; };
 
     // Add an atom with input position to the system.
@@ -47,17 +47,17 @@ public:
     std::vector<real> fs; // Forces (f)
     std::vector<real> fs_prev; // Forces at previous step for Velocity Verlet
 
-    // Box origin.
+    // CellList origin.
     RVec origin;
 
-    // Box size.
+    // CellList size.
     RVec size;
 
-    // Neighbouring boxes indices in a collection (ie. a `System` struct)
-    // which this box will interact with and add forces *to*. Since the force
+    // Neighbouring cell list indices in a collection (ie. a `System` struct)
+    // which this list will interact with and add forces *to*. Since the force
     // calculation is symmetric we only have to calculate it once, going
-    // *from* a box *to* another. Thus all boxes in this collection should
-    // not have this box's index in its corresponding `to_neighbours` object.
+    // *from* a list *to* another. Thus all list in this collection should
+    // not have this list's index in its corresponding `to_neighbours` object.
     std::vector<size_t> to_neighbours;
 
 private:
@@ -78,15 +78,15 @@ public:
     /************
     * Variables *
     *************/
-    // The system is split into (maybe) several boxes containing the atoms.
+    // The system is split into (maybe) several cell lists containing the atoms.
     //
-    // If there are several boxes, they should be non-overlapping
+    // If there are several cell lists, they should be non-overlapping
     // and added to this collection in the order of ZYX, meaning that
     // the indexing increases fastest along Z and slowest along X.
     //
-    // The vector index of the box at (ix, iy, iz) thus is calculated as
+    // The vector index of the cell list at (ix, iy, iz) thus is calculated as
     // i = ix * ny * nz + iy * nz + iz.
-    std::vector<Box> boxes;
+    std::vector<CellList> cell_lists;
 
     // System box size.
     RVec box_size;
@@ -104,6 +104,6 @@ System read_conf_from_grofile(const std::string& filename);
 // Write the configuration to a Gromos formatted file.
 void write_conf_to_grofile(const System& system, const std::string& path);
 
-void split_system_into_boxes(System& system, const real rcut);
+void create_cell_lists(System& system, const real rcut);
 
 #endif // SYSTEM_CONF_H
