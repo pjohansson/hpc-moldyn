@@ -15,6 +15,7 @@ enum Direction {
 
 using real = double;
 using RVec = std::array<real, NDIM>;
+using IVec = std::array<uint64_t, NDIM>;
 
 // A cubic box of atoms as a part of the whole system.
 class Box {
@@ -73,8 +74,11 @@ public:
     // The system is split into (maybe) several boxes containing the atoms.
     std::vector<Box> boxes;
 
-    // Box size.
+    // System box size.
     RVec box_size;
+
+    // System shape.
+    IVec shape;
 
     // Title of system.
     std::string title;

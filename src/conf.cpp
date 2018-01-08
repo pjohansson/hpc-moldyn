@@ -5,6 +5,7 @@
 
 System::System(const std::string& title, const RVec box_size)
     :box_size { box_size },
+     shape { IVec {1, 1, 1} },
      title { title }
 {
 }

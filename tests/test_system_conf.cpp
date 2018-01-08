@@ -58,6 +58,9 @@ ADD_TEST(test_system_init,
 
     ASSERT_EQ(system.num_atoms(), 0, "number of atoms is not zero-initialized");
     ASSERT_EQ(system.boxes.size(), 0, "number of boxes in system is not zero");
+
+    constexpr IVec shape {1, 1, 1};
+    ASSERT_EQ_VEC(system.shape, shape, "shape of system is not initialized as (1, 1, 1)");
 )
 
 ADD_TEST(test_system_adds_num_atoms_from_boxes,
