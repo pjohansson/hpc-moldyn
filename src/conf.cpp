@@ -5,6 +5,24 @@
 
 #include "conf.h"
 
+RVec rvec_add(const RVec r1, const RVec r2)
+{
+    return RVec {
+        r1[XX] + r2[XX],
+        r1[YY] + r2[YY],
+        r1[ZZ] + r2[ZZ]
+    };
+}
+
+RVec rvec_sub(const RVec r1, const RVec r2)
+{
+    return RVec {
+        r1[XX] - r2[XX],
+        r1[YY] - r2[YY],
+        r1[ZZ] - r2[ZZ]
+    };
+}
+
 System::System(const std::string& title, const RVec box_size)
     :box_size { box_size },
      shape { IVec {1, 1, 1} },
@@ -216,24 +234,6 @@ static size_t get_atom_bin_index(const RVec x0,
         + iz;
 }
 
-RVec rvec_add(const RVec r1, const RVec r2)
-{
-    return RVec {
-        r1[XX] + r2[XX],
-        r1[YY] + r2[YY],
-        r1[ZZ] + r2[ZZ]
-    };
-}
-
-RVec rvec_sub(const RVec r1, const RVec r2)
-{
-    return RVec {
-        r1[XX] - r2[XX],
-        r1[YY] - r2[YY],
-        r1[ZZ] - r2[ZZ]
-    };
-}
-
 void update_cell_lists(System& system)
 {
     std::vector<CellList> new_lists;
@@ -333,7 +333,7 @@ void create_cell_lists(System& system, const real rcut)
     {
         // We are recreating the cell list completely and move all atoms
         // from all cell lists into the first cell list, then update the
-        // cell lists to get each atom into their proper list. Strictly 
+        // cell lists to get each atom into their proper list. Strictly
         // speaking this is not necessary (it would be better to move them
         // to their correct cells at once) but we currently only do this once
         // so it does not matter.

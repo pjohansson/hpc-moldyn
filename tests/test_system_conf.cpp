@@ -9,6 +9,19 @@
 
 using namespace std;
 
+ADD_TEST(test_rvec_add_and_sub,
+    const auto r0 = RVec {0.0, 1.0, 2.0};
+    const auto r1 = RVec {3.0, 4.0, 5.0};
+
+    const auto radd = rvec_add(r0, r1);
+    auto expected = RVec {3.0, 5.0, 7.0};
+    ASSERT_EQ_VEC(radd, expected, "RVec's do not add correctly");
+
+    const auto rsub = rvec_sub(r0, r1);
+    expected = RVec {-3.0, -3.0, -3.0};
+    ASSERT_EQ_VEC(rsub, expected, "RVec's do not subtract in the correct order");
+)
+
 ADD_TEST(test_cell_list_init,
     const RVec origin { 0.0, 1.0, 2.0 };
     const RVec size { 3.0, 4.0, 5.0 };
@@ -519,6 +532,7 @@ ADD_TEST(test_update_cell_lists_moves_positions_and_velocities_only,
 )
 
 RUN_TESTS(
+    test_rvec_add_and_sub();
     test_cell_list_init();
     test_cell_list_add_atom();
     test_cell_list_get_atom();
