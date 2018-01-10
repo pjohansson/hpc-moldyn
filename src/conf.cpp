@@ -231,6 +231,10 @@ void update_cell_lists(System& system)
                 x0, system.cell_size, system.shape);
             auto& to_list = new_lists.at(to_index);
 
+            // If the indices are the same we have the exact coordinates
+            // and can transfer them without adjusting between the (identical)
+            // origins. Minor save of computational time, more importantly
+            // it avoids another floating point rounding error.
             if (from_index == to_index)
             {
                 std::copy_n(list.xs.cbegin() + current, NDIM,
