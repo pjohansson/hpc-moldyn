@@ -35,6 +35,18 @@ ADD_TEST(test_calc_force,
     ASSERT_EQ_VEC(list.fs, expected, "forces are not calculated correctly");
 )
 
+ADD_TEST(test_calc_force_with_no_atoms_in_cell_works,
+    // Ensure that the internal loop calculation works for the edge
+    // case of no atoms in the cell.
+    CellList list (0, RVec {0.0, 0.0, 0.0}, RVec{1.0, 1.0, 1.0});
+
+    calc_forces_internal(list, TestFF);
+
+    const vector<double> expected;
+
+    ASSERT_EQ_VEC(list.fs, expected, "forces are not calculated correctly");
+)
+
 ADD_TEST(test_calc_force_outside_of_rcut_is_zero,
     CellList list (2, RVec {0.0, 0.0, 0.0}, RVec{1.0, 1.0, 1.0});
 
@@ -312,6 +324,7 @@ ADD_TEST(test_velocity_verlet_step_list_with_no_neighbours_does_nothing,
 
 RUN_TESTS(
     test_calc_force();
+    test_calc_force_with_no_atoms_in_cell_works();
     test_calc_force_outside_of_rcut_is_zero();
     test_calc_force_adds_total_force();
     test_calc_force_between_two_lists();

@@ -79,6 +79,11 @@ static RVec calc_force_between_atoms(const dRVec&      dr,
 // Add the forces from internal interactions within a cell list.
 static void calc_forces_internal(CellList& list, const ForceField& ff)
 {
+    if (list.num_atoms() == 0)
+    {
+        return;
+    }
+
     for (unsigned i = 0; i < list.num_atoms() - 1; ++i)
     {
         for (unsigned j = i + 1; j < list.num_atoms(); ++j)
