@@ -74,6 +74,45 @@ Atom CellList::get_atom(const size_t index) const
     return atom;
 }
 
+void CellList::transfer_data_from(const CellList& from_list, const char fields)
+{
+    natoms = from_list.num_atoms();
+    const auto capacity = natoms * NDIM;
+
+    if (fields & POSITION)
+    {
+        xs = from_list.xs;
+    }
+    else
+    {
+        xs.resize(capacity);
+        xs.assign(capacity, 0.0);
+    }
+
+    if (fields & VELOCITY)
+    {
+        vs = from_list.vs;
+    }
+    else
+    {
+        vs.resize(capacity);
+        vs.assign(capacity, 0.0);
+    }
+
+    if (fields & FORCE)
+    {
+        fs = from_list.fs;
+        fs_prev = from_list.fs_prev;
+    }
+    else
+    {
+        fs.resize(capacity);
+        fs.assign(capacity, 0.0);
+        fs_prev.resize(capacity);
+        fs_prev.assign(capacity, 0.0);
+    }
+}
+
 System read_conf_from_grofile(const std::string& path)
 {
     std::ifstream ifs { path, std::ifstream::in };
