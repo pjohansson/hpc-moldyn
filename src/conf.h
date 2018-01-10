@@ -13,13 +13,6 @@ enum Direction {
     NDIM
 };
 
-enum Fields : char {
-    POSITION = 1 << 0,
-    VELOCITY = 1 << 1,
-    FORCE    = 1 << 2,
-    ALL      = (POSITION | VELOCITY | FORCE)
-};
-
 using real = double;
 using RVec = std::array<real, NDIM>;
 using IVec = std::array<uint64_t, NDIM>;
@@ -52,10 +45,6 @@ public:
 
     // Get all the data for a specific atom of input index.
     Atom get_atom(const size_t index) const;
-
-    // Transfer specified data from another CellList into this by replacing
-    // the data. The unspecified fields are set to 0.
-    void transfer_data_from(const CellList& from_list, const char fields);
 
     void update_num_atoms(void) {
         natoms = static_cast<uint64_t>(xs.size() / NDIM);

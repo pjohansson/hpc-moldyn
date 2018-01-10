@@ -91,84 +91,6 @@ ADD_TEST(test_cell_list_get_atom,
     ASSERT_EQ_VEC(list.get_atom(1).fs, atom2.fs, "atoms are not returned correctly");
 )
 
-ADD_TEST(test_transfer_atoms_from_cell_list_to_new_with_flag_for_values,
-    const auto from_origin = RVec {0.0, 0.0, 0.0};
-    const auto from_cell_size = RVec {1.0, 1.0, 1.0};
-    auto from_list = CellList(2, from_origin, from_cell_size);
-    from_list.add_atom(0.0, 0.0, 0.0);
-    from_list.add_atom(1.0, 0.0, 0.0);
-
-    // Explicitly set these values, the positions are the same (2 atoms).
-    const vector<real> xs      {0.0, 0.0, 0.0, 1.0,  0.0,  0.0};
-    const vector<real> vs      {0.0, 1.0, 2.0, 3.0,  4.0,  5.0};
-    const vector<real> fs      {0.0, 2.0, 4.0, 6.0,  8.0, 10.0};
-    const vector<real> fs_prev {0.0, 3.0, 6.0, 9.0, 12.0, 15.0};
-    const vector<real> zeroes(6, 0.0);
-
-    from_list.xs = xs;
-    from_list.vs = vs;
-    from_list.fs = fs;
-    from_list.fs_prev = fs_prev;
-
-    const auto to_origin = RVec {1.0, 2.0, 3.0};
-    const auto to_cell_size = RVec {4.0, 5.0, 6.0};
-    auto to_list = CellList(2, to_origin, to_cell_size);
-
-    to_list.transfer_data_from(from_list, POSITION);
-    ASSERT_EQ_VEC(xs, to_list.xs, "positions were not transferred");
-    ASSERT_EQ_VEC(zeroes, to_list.vs,
-        "velocities were transferred when they were not selected");
-    ASSERT_EQ_VEC(zeroes, to_list.fs,
-        "forces were transferred when they were not selected");
-    ASSERT_EQ_VEC(zeroes, to_list.fs_prev,
-        "forces (prev) were transferred when they were not selected");
-
-    to_list.transfer_data_from(from_list, VELOCITY);
-    ASSERT_EQ_VEC(zeroes, to_list.xs,
-        "positions were transferred when they were not selected");
-    ASSERT_EQ_VEC(vs, to_list.vs, "velocities were not transferred");
-    ASSERT_EQ_VEC(zeroes, to_list.fs,
-        "forces were transferred when they were not selected");
-    ASSERT_EQ_VEC(zeroes, to_list.fs_prev,
-        "forces (prev) were transferred when they were not selected");
-
-    to_list.transfer_data_from(from_list, FORCE);
-    ASSERT_EQ_VEC(zeroes, to_list.xs,
-        "positions were transferred when they were not selected");
-    ASSERT_EQ_VEC(zeroes, to_list.vs,
-        "velocities were transferred when they were not selected");
-    ASSERT_EQ_VEC(fs, to_list.fs, "forces were not transferred");
-    ASSERT_EQ_VEC(fs_prev, to_list.fs_prev,
-        "forces (prev) were not transferred");
-
-    to_list.transfer_data_from(from_list, POSITION | VELOCITY);
-    ASSERT_EQ_VEC(xs, to_list.xs,
-        "positions were not transferred along with velocities");
-    ASSERT_EQ_VEC(vs, to_list.vs,
-        "velocities were not transferred along with positions");
-    ASSERT_EQ_VEC(zeroes, to_list.fs,
-        "forces were transferred when they were not selected");
-    ASSERT_EQ_VEC(zeroes, to_list.fs_prev,
-        "forces (prev) were transferred when they were not selected");
-
-    to_list.transfer_data_from(from_list, ALL);
-    ASSERT_EQ_VEC(xs, to_list.xs,
-        "positions were not transferred when all should have been");
-    ASSERT_EQ_VEC(vs, to_list.vs,
-        "velocities were not transferred when all should have been");
-    ASSERT_EQ_VEC(fs, to_list.fs,
-        "forces were not transferred when all should have been");
-    ASSERT_EQ_VEC(fs_prev, to_list.fs_prev,
-        "forces (prev) were not transferred all should have been");
-
-    ASSERT_EQ_VEC(to_origin, to_list.origin,
-        "the origin was changed at transfer");
-    ASSERT_EQ_VEC(to_cell_size, to_list.size,
-        "the cell size was changed at transfer");
-    ASSERT_EQ(2, to_list.num_atoms(),
-        "the number of atoms is not correct after transfer");
-)
-
 ADD_TEST(test_system_init,
     const std::string title {"title of system"};
     const RVec box_size {1.0, 2.0, 3.0};
@@ -536,7 +458,6 @@ RUN_TESTS(
     test_cell_list_init();
     test_cell_list_add_atom();
     test_cell_list_get_atom();
-    test_transfer_atoms_from_cell_list_to_new_with_flag_for_values();
     test_system_init();
     test_system_adds_num_atoms_from_lists();
     test_system_read_grofile();
