@@ -160,6 +160,50 @@ static size_t get_index_within_limits(const real x0,
     return static_cast<size_t>(std::max(0, std::min((int) num_bins - 1, i)));
 }
 
+void update_cell_lists(System& system)
+{
+    std::vector<CellList> new_lists;
+    new_lists.reserve(system.cell_lists.size());
+
+    for (const auto& list : system.cell_lists)
+    {
+        for (unsigned i = 0; i < list.num_atoms(); ++i)
+        {
+            const auto atom = list.get_atom(i);
+            const auto x0 = list.origin[XX] + atom.xs[XX];
+            const auto y0 = list.origin[YY] + atom.xs[YY];
+            const auto z0 = list.origin[ZZ] + atom.xs[ZZ];
+
+            // Ensure that they are placed in a list inside the system,
+            // with minimum index 0 and maximum n - 1
+            const auto ix = get_index_within_limits(
+                x0, system.cell_size[XX], system.shape[XX]);
+            const auto iy = get_index_within_limits(
+                y0, system.cell_size[YY], system.shape[YY]);
+            const auto iz = get_index_within_limits(
+                z0, system.cell_size[ZZ], system.shape[ZZ]);
+
+            const auto to_index = ix * system.shape[YY] * system.shape[ZZ]
+                + iy * system.shape[ZZ] + iz;
+
+            const auto& to_origin = new_lists.at(to_index).origin;
+            new_lists.at(to_index).add_atom(
+                x0 - to_origin[XX], y0 - to_origin[YY], z0 - to_origin[ZZ]
+            );
+        }
+    }
+
+    for (auto& list : new_lists)
+    {
+        list.xs.shrink_to_fit();
+        list.vs.shrink_to_fit();
+        list.fs.shrink_to_fit();
+        list.fs_prev.shrink_to_fit();
+    }
+
+    system.cell_lists = std::move(new_lists);
+}
+
 void create_cell_lists(System& system, const real rcut)
 {
     const real target_size = 2.0 * rcut;
@@ -194,37 +238,44 @@ void create_cell_lists(System& system, const real rcut)
         }
     }
 
-    for (const auto& list : system.cell_lists)
-    {
-        for (unsigned i = 0; i < list.num_atoms(); ++i)
-        {
-            const auto atom = list.get_atom(i);
-            const auto x0 = list.origin[XX] + atom.xs[XX];
-            const auto y0 = list.origin[YY] + atom.xs[YY];
-            const auto z0 = list.origin[ZZ] + atom.xs[ZZ];
-
-            // Ensure that they are placed in a list inside the system,
-            // with minimum index 0 and maximum n - 1
-            const auto ix = get_index_within_limits(x0, dx, nx);
-            const auto iy = get_index_within_limits(y0, dy, ny);
-            const auto iz = get_index_within_limits(z0, dz, nz);
-
-            const auto to_index = ix * ny * nz + iy * nz + iz;
-
-            const auto& origin = split_lists.at(to_index).origin;
-            split_lists.at(to_index).add_atom(
-                x0 - origin[XX], y0 - origin[YY], z0 - origin[ZZ]
-            );
-        }
-    }
-
-    for (auto& list : split_lists)
-    {
-        list.xs.shrink_to_fit();
-        list.vs.shrink_to_fit();
-        list.fs.shrink_to_fit();
-        list.fs_prev.shrink_to_fit();
-    }
-
+    split_lists.at(0).xs = system.cell_lists.at(0).xs;
+    split_lists.at(0).vs = system.cell_lists.at(0).vs;
+    split_lists.at(0).fs = system.cell_lists.at(0).fs;
+    split_lists.at(0).fs_prev = system.cell_lists.at(0).fs_prev;
+    split_lists.shrink_to_fit();
     system.cell_lists = std::move(split_lists);
+
+    update_cell_lists(system);
+    // for (const auto& list : system.cell_lists)
+    // {
+    //     for (unsigned i = 0; i < list.num_atoms(); ++i)
+    //     {
+    //         const auto atom = list.get_atom(i);
+    //         const auto x0 = list.origin[XX] + atom.xs[XX];
+    //         const auto y0 = list.origin[YY] + atom.xs[YY];
+    //         const auto z0 = list.origin[ZZ] + atom.xs[ZZ];
+    //
+    //         // Ensure that they are placed in a list inside the system,
+    //         // with minimum index 0 and maximum n - 1
+    //         const auto ix = get_index_within_limits(x0, dx, nx);
+    //         const auto iy = get_index_within_limits(y0, dy, ny);
+    //         const auto iz = get_index_within_limits(z0, dz, nz);
+    //
+    //         const auto to_index = ix * ny * nz + iy * nz + iz;
+    //
+    //         const auto& origin = split_lists.at(to_index).origin;
+    //         split_lists.at(to_index).add_atom(
+    //             x0 - origin[XX], y0 - origin[YY], z0 - origin[ZZ]
+    //         );
+    //     }
+    // }
+    //
+    // for (auto& list : split_lists)
+    // {
+    //     list.xs.shrink_to_fit();
+    //     list.vs.shrink_to_fit();
+    //     list.fs.shrink_to_fit();
+    //     list.fs_prev.shrink_to_fit();
+    // }
+    //
 }
