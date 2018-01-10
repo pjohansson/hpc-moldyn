@@ -261,10 +261,12 @@ void update_cell_lists(System& system)
 
             const auto to_index = get_atom_bin_index(
                 x0, system.cell_size, system.shape);
-            auto& to_list = new_lists.at(to_index);
 
+            auto& to_list = new_lists.at(to_index);
             const auto x1 = rvec_sub(x0, to_list.origin);
-            std::copy(x1.cbegin(), x1.cend(), std::back_inserter(to_list.xs));
+
+            std::copy_n(x1.cbegin(), NDIM,
+                        std::back_inserter(to_list.xs));
             std::copy_n(list.vs.cbegin() + current, NDIM,
                         std::back_inserter(to_list.vs));
             std::copy_n(list.fs.cbegin() + current, NDIM,
@@ -276,8 +278,11 @@ void update_cell_lists(System& system)
     {
         list.xs.shrink_to_fit();
         list.vs.shrink_to_fit();
-        list.fs.assign(list.xs.size(), 0.0);
         list.fs_prev.shrink_to_fit();
+
+        list.fs.resize(list.xs.size(), 0.0);
+        list.fs.shrink_to_fit();
+
         list.update_num_atoms();
     }
 
@@ -318,30 +323,37 @@ void create_cell_lists(System& system, const real rcut)
         }
     }
 
-    for (const auto& list : system.cell_lists)
-    {
-        for (unsigned i = 0; i < list.num_atoms(); ++i)
-        {
-            const auto atom = list.get_atom(i);
-            const auto x0 = rvec_add(list.origin, atom.xs);
-
-            const auto to_index = get_atom_bin_index(
-                x0, system.cell_size, system.shape);
-
-            const auto& origin = split_lists.at(to_index).origin;
-            const auto x1 = rvec_sub(x0, origin);
-            split_lists.at(to_index).add_atom(x1[XX], x1[YY], x1[ZZ]);
-        }
-    }
-
-    for (auto& list : split_lists)
-    {
-        list.xs.shrink_to_fit();
-        list.vs.shrink_to_fit();
-        list.fs.shrink_to_fit();
-        list.fs_prev.shrink_to_fit();
-    }
-
     split_lists.shrink_to_fit();
-    system.cell_lists = std::move(split_lists);
+
+    if (system.cell_lists.empty())
+    {
+        system.cell_lists = std::move(split_lists);
+    }
+    else
+    {
+        // We are recreating the cell list completely and move all atoms
+        // from all cell lists into the first cell list, then update the
+        // cell lists to get each atom into their proper list. Strictly 
+        // speaking this is not necessary (it would be better to move them
+        // to their correct cells at once) but we currently only do this once
+        // so it does not matter.
+        auto& first = split_lists.at(0);
+
+        for (const auto& list : system.cell_lists)
+        {
+            std::move(list.xs.begin(), list.xs.end(),
+                      std::back_inserter(first.xs));
+            std::move(list.vs.begin(), list.vs.end(),
+                      std::back_inserter(first.vs));
+            std::move(list.fs.begin(), list.fs.end(),
+                      std::back_inserter(first.fs));
+            std::move(list.fs_prev.begin(), list.fs_prev.end(),
+                      std::back_inserter(first.fs_prev));
+        }
+
+        first.update_num_atoms();
+        system.cell_lists = std::move(split_lists);
+
+        update_cell_lists(system);
+    }
 }
