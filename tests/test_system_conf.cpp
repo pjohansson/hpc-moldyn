@@ -61,36 +61,6 @@ ADD_TEST(test_cell_list_add_atom,
     ASSERT_EQ_VEC(list.fs_prev, zs, "added atom forces (prev) are not zero-initialized");
 )
 
-ADD_TEST(test_cell_list_get_atom,
-    CellList list {2, RVec {0.0, 0.0, 0.0}, RVec {0.0, 0.0, 0.0}};
-
-    std::vector<real> xs {0.0, 1.0, 2.0, 3.0,  4.0,  5.0};
-    std::vector<real> vs {0.0, 2.0, 4.0, 6.0,  8.0, 10.0};
-    std::vector<real> fs {0.0, 3.0, 6.0, 9.0, 12.0, 15.0};
-
-    list.xs = xs;
-    list.vs = vs;
-    list.fs = fs;
-
-    Atom atom1 {
-        RVec {0.0, 1.0, 2.0},
-        RVec {0.0, 2.0, 4.0},
-        RVec {0.0, 3.0, 6.0}
-    };
-    Atom atom2 {
-        RVec {3.0,  4.0,  5.0},
-        RVec {6.0,  8.0, 10.0},
-        RVec {9.0, 12.0, 15.0}
-    };
-
-    ASSERT_EQ_VEC(list.get_atom(0).xs, atom1.xs, "atoms are not returned correctly");
-    ASSERT_EQ_VEC(list.get_atom(0).vs, atom1.vs, "atoms are not returned correctly");
-    ASSERT_EQ_VEC(list.get_atom(0).fs, atom1.fs, "atoms are not returned correctly");
-    ASSERT_EQ_VEC(list.get_atom(1).xs, atom2.xs, "atoms are not returned correctly");
-    ASSERT_EQ_VEC(list.get_atom(1).vs, atom2.vs, "atoms are not returned correctly");
-    ASSERT_EQ_VEC(list.get_atom(1).fs, atom2.fs, "atoms are not returned correctly");
-)
-
 ADD_TEST(test_system_init,
     const std::string title {"title of system"};
     const RVec box_size {1.0, 2.0, 3.0};
@@ -457,7 +427,6 @@ RUN_TESTS(
     test_rvec_add_and_sub();
     test_cell_list_init();
     test_cell_list_add_atom();
-    test_cell_list_get_atom();
     test_system_init();
     test_system_adds_num_atoms_from_lists();
     test_system_read_grofile();

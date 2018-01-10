@@ -23,11 +23,6 @@ RVec rvec_add(const RVec r1, const RVec r2);
 // Subtract a vector from another: r = r1 - r2.
 RVec rvec_sub(const RVec r1, const RVec r2);
 
-// An atom's position, velocity and force.
-struct Atom {
-    RVec xs, vs, fs;
-};
-
 // A cell of atoms as a part of the whole system.
 class CellList {
 public:
@@ -42,9 +37,6 @@ public:
 
     // Add an atom with input position to the system.
     void add_atom(const real x, const real y, const real z);
-
-    // Get all the data for a specific atom of input index.
-    Atom get_atom(const size_t index) const;
 
     void update_num_atoms(void) {
         natoms = static_cast<uint64_t>(xs.size() / NDIM);

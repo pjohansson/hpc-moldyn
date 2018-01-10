@@ -70,29 +70,6 @@ void CellList::add_atom(const real x, const real y, const real z)
     ++natoms;
 }
 
-Atom CellList::get_atom(const size_t index) const
-{
-    const Atom atom {
-        RVec {
-            xs.at(NDIM * index + XX),
-            xs.at(NDIM * index + YY),
-            xs.at(NDIM * index + ZZ)
-        },
-        RVec {
-            vs.at(NDIM * index + XX),
-            vs.at(NDIM * index + YY),
-            vs.at(NDIM * index + ZZ)
-        },
-        RVec {
-            fs.at(NDIM * index + XX),
-            fs.at(NDIM * index + YY),
-            fs.at(NDIM * index + ZZ)
-        }
-    };
-
-    return atom;
-}
-
 System read_conf_from_grofile(const std::string& path)
 {
     std::ifstream ifs { path, std::ifstream::in };
