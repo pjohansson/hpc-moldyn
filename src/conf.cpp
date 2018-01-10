@@ -217,7 +217,8 @@ void update_cell_lists(System& system)
                 std::copy_n(list.xs.cbegin() + current, NDIM,
                             std::back_inserter(to_list.xs));
             }
-            else {
+            else
+            {
                 const auto x1 = rvec_sub(x0, to_list.origin);
                 std::copy_n(x1.cbegin(), NDIM,
                             std::back_inserter(to_list.xs));
