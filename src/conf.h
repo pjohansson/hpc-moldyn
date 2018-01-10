@@ -51,6 +51,10 @@ public:
     // the data. The unspecified fields are set to 0.
     void transfer_data_from(const CellList& from_list, const char fields);
 
+    void update_num_atoms(void) {
+        natoms = static_cast<uint64_t>(xs.size() / NDIM);
+    }
+
     /************
     * Variables *
     *************/

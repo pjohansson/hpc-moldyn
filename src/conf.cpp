@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cmath>
 #include <fstream>
 #include <iomanip>
@@ -190,13 +191,47 @@ void write_conf_to_grofile(const System& system, const std::string& path)
         << std::setw(9) << system.box_size[2] << '\n';
 }
 
-static size_t get_index_within_limits(const real x0,
-                                      const real bin_size,
-                                      const size_t num_bins)
+static size_t get_index_within_limits(const RVec x0,
+                                      const RVec bin_size,
+                                      const IVec num_bins,
+                                      const Direction axis)
 {
-    const auto i = static_cast<int>(floor(x0 / bin_size));
+    const auto i = static_cast<int>(floor(x0[axis] / bin_size[axis]));
 
-    return static_cast<size_t>(std::max(0, std::min((int) num_bins - 1, i)));
+    // Ensure that they are placed in a list inside the system,
+    // with minimum index 0 and maximum n - 1
+    return static_cast<size_t>(std::max(0, std::min((int) num_bins[axis] - 1, i)));
+}
+
+static size_t get_atom_bin_index(const RVec x0,
+                                 const RVec cell_size,
+                                 const IVec system_shape)
+{
+    const auto ix = get_index_within_limits(x0, cell_size, system_shape, XX);
+    const auto iy = get_index_within_limits(x0, cell_size, system_shape, YY);
+    const auto iz = get_index_within_limits(x0, cell_size, system_shape, ZZ);
+
+    return ix * system_shape[YY] * system_shape[ZZ]
+        + iy * system_shape[ZZ]
+        + iz;
+}
+
+RVec rvec_add(const RVec r1, const RVec r2)
+{
+    return RVec {
+        r1[XX] + r2[XX],
+        r1[YY] + r2[YY],
+        r1[ZZ] + r2[ZZ]
+    };
+}
+
+RVec rvec_sub(const RVec r1, const RVec r2)
+{
+    return RVec {
+        r1[XX] - r2[XX],
+        r1[YY] - r2[YY],
+        r1[ZZ] - r2[ZZ]
+    };
 }
 
 void update_cell_lists(System& system)
@@ -206,29 +241,34 @@ void update_cell_lists(System& system)
 
     for (const auto& list : system.cell_lists)
     {
+        new_lists.push_back(
+            CellList(list.num_atoms(), list.origin, system.cell_size)
+        );
+    }
+
+    for (const auto& list : system.cell_lists)
+    {
         for (unsigned i = 0; i < list.num_atoms(); ++i)
         {
-            const auto atom = list.get_atom(i);
-            const auto x0 = list.origin[XX] + atom.xs[XX];
-            const auto y0 = list.origin[YY] + atom.xs[YY];
-            const auto z0 = list.origin[ZZ] + atom.xs[ZZ];
+            const auto current = i * NDIM;
 
-            // Ensure that they are placed in a list inside the system,
-            // with minimum index 0 and maximum n - 1
-            const auto ix = get_index_within_limits(
-                x0, system.cell_size[XX], system.shape[XX]);
-            const auto iy = get_index_within_limits(
-                y0, system.cell_size[YY], system.shape[YY]);
-            const auto iz = get_index_within_limits(
-                z0, system.cell_size[ZZ], system.shape[ZZ]);
+            const auto x = RVec {
+                list.xs.at(current + XX),
+                list.xs.at(current + YY),
+                list.xs.at(current + ZZ)
+            };
+            const auto x0 = rvec_add(list.origin, x);
 
-            const auto to_index = ix * system.shape[YY] * system.shape[ZZ]
-                + iy * system.shape[ZZ] + iz;
+            const auto to_index = get_atom_bin_index(
+                x0, system.cell_size, system.shape);
+            auto& to_list = new_lists.at(to_index);
 
-            const auto& to_origin = new_lists.at(to_index).origin;
-            new_lists.at(to_index).add_atom(
-                x0 - to_origin[XX], y0 - to_origin[YY], z0 - to_origin[ZZ]
-            );
+            const auto x1 = rvec_sub(x0, to_list.origin);
+            std::copy(x1.cbegin(), x1.cend(), std::back_inserter(to_list.xs));
+            std::copy_n(list.vs.cbegin() + current, NDIM,
+                        std::back_inserter(to_list.vs));
+            std::copy_n(list.fs.cbegin() + current, NDIM,
+                        std::back_inserter(to_list.fs_prev));
         }
     }
 
@@ -236,8 +276,9 @@ void update_cell_lists(System& system)
     {
         list.xs.shrink_to_fit();
         list.vs.shrink_to_fit();
-        list.fs.shrink_to_fit();
+        list.fs.assign(list.xs.size(), 0.0);
         list.fs_prev.shrink_to_fit();
+        list.update_num_atoms();
     }
 
     system.cell_lists = std::move(new_lists);
@@ -282,22 +323,14 @@ void create_cell_lists(System& system, const real rcut)
         for (unsigned i = 0; i < list.num_atoms(); ++i)
         {
             const auto atom = list.get_atom(i);
-            const auto x0 = list.origin[XX] + atom.xs[XX];
-            const auto y0 = list.origin[YY] + atom.xs[YY];
-            const auto z0 = list.origin[ZZ] + atom.xs[ZZ];
+            const auto x0 = rvec_add(list.origin, atom.xs);
 
-            // Ensure that they are placed in a list inside the system,
-            // with minimum index 0 and maximum n - 1
-            const auto ix = get_index_within_limits(x0, dx, nx);
-            const auto iy = get_index_within_limits(y0, dy, ny);
-            const auto iz = get_index_within_limits(z0, dz, nz);
-
-            const auto to_index = ix * ny * nz + iy * nz + iz;
+            const auto to_index = get_atom_bin_index(
+                x0, system.cell_size, system.shape);
 
             const auto& origin = split_lists.at(to_index).origin;
-            split_lists.at(to_index).add_atom(
-                x0 - origin[XX], y0 - origin[YY], z0 - origin[ZZ]
-            );
+            const auto x1 = rvec_sub(x0, origin);
+            split_lists.at(to_index).add_atom(x1[XX], x1[YY], x1[ZZ]);
         }
     }
 

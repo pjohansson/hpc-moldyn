@@ -5,7 +5,7 @@
 
 #include "tests/utils.h"
 
-#include "src/conf.h"
+#include "src/conf.cpp"
 
 using namespace std;
 
@@ -409,6 +409,115 @@ ADD_TEST(test_split_system_puts_atoms_in_correct_lists,
         "after readding the atoms the reserved memory has not been minimized");
 )
 
+ADD_TEST(test_update_cell_lists_moves_positions_and_velocities_only,
+    const std::string title {"title of system"};
+    const RVec box_size {2.0, 2.0, 1.0};
+    const RVec cell_size {1.0, 1.0, 1.0};
+    const IVec shape {2, 2, 1};
+
+    auto system = System(title, box_size);
+
+    system.shape = shape;
+    system.cell_size = cell_size;
+
+    auto list1 = CellList(0, RVec {0.0, 0.0, 0.0}, cell_size);
+    auto list2 = CellList(0, RVec {0.0, 1.0, 0.0}, cell_size);
+    auto list3 = CellList(0, RVec {1.0, 0.0, 0.0}, cell_size);
+    auto list4 = CellList(0, RVec {1.0, 1.0, 0.0}, cell_size);
+
+    list1.add_atom(0.5, 0.5, 0.5);    // remain in list1
+    list1.add_atom(-0.5, -0.5, -0.5); // remain in list1 (OOB)
+    list1.add_atom(1.5, 0.5, 0.5); // -> list3 as (0.5, 0.5, 0.5)
+    list1.add_atom(2.5, 0.5, 1.5); // -> list3 as (1.5, 0.5, 1.5) (OOB)
+    list1.vs = vector<real> {
+        0.0, 1.0, 2.0,
+        3.0, 4.0, 5.0,
+        6.0, 7.0, 8.0,
+        9.0, 10.0, 11.0
+    };
+    list1.fs = list1.xs; // the forces should be moved to the previous slot
+    list1.fs_prev = list1.vs; // these will be thrown away
+
+    list4.add_atom(-0.5, -0.5, -0.5); // -> list1 as (0.5, 0.5, -0.5)
+    list4.vs = vector<real> {0.0, 0.5, 1.0};
+    list4.fs = list4.xs;
+    list4.fs_prev = list4.vs;
+
+    system.cell_lists.push_back(std::move(list1));
+    system.cell_lists.push_back(std::move(list2));
+    system.cell_lists.push_back(std::move(list3));
+    system.cell_lists.push_back(std::move(list4));
+
+    update_cell_lists(system);
+
+    const auto list1_xs = vector<real> {
+        0.5, 0.5, 0.5,
+        -0.5, -0.5, -0.5,
+        0.5, 0.5, -0.5 // from list4
+    };
+    const auto list1_vs = vector<real> {
+        0.0, 1.0, 2.0,
+        3.0, 4.0, 5.0,
+        0.0, 0.5, 1.0
+    };
+    const auto list1_fs_prev = vector<real> {
+        0.5, 0.5, 0.5,
+        -0.5, -0.5, -0.5,
+        -0.5, -0.5, -0.5 // from list4
+    };
+    const auto list1_zs = vector<real>(9, 0.0);
+
+    ASSERT_EQ_VEC(system.cell_lists[0].xs, list1_xs,
+        "list1 does not contain the expected coordinates after the update");
+    ASSERT_EQ_VEC(system.cell_lists[0].vs, list1_vs,
+        "list1 does not contain the expected velocities after the update");
+    ASSERT_EQ_VEC(system.cell_lists[0].fs, list1_zs,
+        "list1 has forces when it should have none");
+    ASSERT_EQ_VEC(system.cell_lists[0].fs_prev, list1_fs_prev,
+        "list1 has not set the forces (prev) as the corresponding prev forces");
+
+    const auto list3_xs = vector<real> {
+        0.5, 0.5, 0.5,
+        1.5, 0.5, 1.5
+    };
+    const auto list3_vs = vector<real> {
+        6.0, 7.0, 8.0,
+        9.0, 10.0, 11.0
+    };
+    const auto list3_fs_prev = vector<real> {
+        1.5, 0.5, 0.5,
+        2.5, 0.5, 1.5
+    };
+    const auto list3_zs = vector<real>(6, 0.0);
+
+    ASSERT_EQ_VEC(system.cell_lists[2].xs, list3_xs,
+        "list3 does not contain the expected coordinates after the update");
+    ASSERT_EQ_VEC(system.cell_lists[2].vs, list3_vs,
+        "list3 does not contain the expected velocities after the update");
+    ASSERT_EQ_VEC(system.cell_lists[2].fs, list3_zs,
+        "list3 has forces when it should have none");
+    ASSERT_EQ_VEC(system.cell_lists[2].fs_prev, list3_fs_prev,
+        "list3 has not set the forces (prev) as the corresponding prev forces");
+
+    ASSERT(system.cell_lists[1].xs.empty(), "list2 is not empty");
+    ASSERT(system.cell_lists[1].vs.empty(), "list2 is not empty");
+    ASSERT(system.cell_lists[1].fs.empty(), "list2 is not empty");
+    ASSERT(system.cell_lists[1].fs_prev.empty(), "list2 is not empty");
+    ASSERT(system.cell_lists[3].xs.empty(), "list4 is not empty");
+    ASSERT(system.cell_lists[3].vs.empty(), "list4 is not empty");
+    ASSERT(system.cell_lists[3].fs.empty(), "list4 is not empty");
+    ASSERT(system.cell_lists[3].fs_prev.empty(), "list4 is not empty");
+
+    ASSERT_EQ(system.cell_lists[0].num_atoms(), 3,
+        "list1 does not have the correct number of atoms set");
+    ASSERT_EQ(system.cell_lists[1].num_atoms(), 0,
+        "list2 does not have the correct number of atoms set");
+    ASSERT_EQ(system.cell_lists[2].num_atoms(), 2,
+        "list3 does not have the correct number of atoms set");
+    ASSERT_EQ(system.cell_lists[3].num_atoms(), 0,
+        "list4 does not have the correct number of atoms set");
+)
+
 RUN_TESTS(
     test_cell_list_init();
     test_cell_list_add_atom();
@@ -421,4 +530,5 @@ RUN_TESTS(
     test_split_system_into_lists_of_size_2x_rcut_gives_correct_shape();
     test_split_system_into_lists_creates_minimum_one_per_size();
     test_split_system_puts_atoms_in_correct_lists();
+    test_update_cell_lists_moves_positions_and_velocities_only();
 );
