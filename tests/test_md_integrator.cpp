@@ -240,13 +240,17 @@ ADD_TEST(test_velocity_verlet_step_single_list,
 ADD_TEST(test_velocity_verlet_step_list_with_a_neighbour,
     const std::string title = "Test";
     const RVec box_size {2.0, 1.0, 1.0};
+    const RVec cell_size {1.0, 1.0, 1.0};
+
     auto system = System(title, box_size);
+    system.cell_size = cell_size;
+    system.shape = IVec {2, 1, 1};
 
     // Two lists separated by 1 along the x axis
-    auto list1 = CellList(2, RVec {0.0, 0.0, 0.0}, RVec {1.0, 1.0, 1.0});
-    auto list2 = CellList(2, RVec {1.0, 0.0, 0.0}, RVec {1.0, 1.0, 1.0});
-    list1.add_atom(0.0, 0.0, 0.0);
-    list2.add_atom(0.0, 0.0, 0.0);
+    auto list1 = CellList(2, RVec {0.0, 0.0, 0.0}, cell_size);
+    auto list2 = CellList(2, RVec {1.0, 0.0, 0.0}, cell_size);
+    list1.add_atom(0.6, 0.0, 0.0);
+    list2.add_atom(0.4, 0.0, 0.0);
 
     // Calculate the initial forces (no internal interactions)
     calc_forces_cell_to_cell(list1, list2, TestFF);
@@ -294,9 +298,12 @@ ADD_TEST(test_velocity_verlet_step_list_with_no_neighbours_does_nothing,
     const RVec box_size {2.0, 1.0, 1.0};
     auto system = System(title, box_size);
 
+    system.cell_size = RVec {1.0, 1.0, 1.0};
+    system.shape = IVec {2, 1, 1};
+
     // Two lists separated by 1 along the x axis
-    auto list1 = CellList(2, RVec {0.0, 0.0, 0.0}, RVec {1.0, 1.0, 1.0});
-    auto list2 = CellList(2, RVec {1.0, 0.0, 0.0}, RVec {1.0, 1.0, 1.0});
+    auto list1 = CellList(2, RVec {0.0, 0.0, 0.0}, system.cell_size);
+    auto list2 = CellList(2, RVec {1.0, 0.0, 0.0}, system.cell_size);
     list1.add_atom(0.0, 0.0, 0.0);
     list2.add_atom(0.0, 0.0, 0.0);
 

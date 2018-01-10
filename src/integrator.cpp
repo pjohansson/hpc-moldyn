@@ -185,8 +185,9 @@ void run_velocity_verlet(System& system,
     for (auto& list : system.cell_lists)
     {
         update_positions_cell(list, ff, opts);
-        reset_forces_cell(list);
     }
+
+    update_cell_lists(system);
 
     // The force calculation is in a separate iteration since
     // it is not local to each cell list, which resetting the forces

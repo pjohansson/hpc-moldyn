@@ -202,13 +202,20 @@ void update_cell_lists(System& system)
 
     for (const auto& list : system.cell_lists)
     {
+
         new_lists.push_back(
             CellList(list.num_atoms(), list.origin, system.cell_size)
         );
+
+        new_lists.back().to_neighbours = list.to_neighbours;
     }
 
-    for (const auto& list : system.cell_lists)
+    for (unsigned from_index = 0;
+         from_index < system.cell_lists.size();
+         ++from_index)
     {
+        auto& list = system.cell_lists.at(from_index);
+
         for (unsigned i = 0; i < list.num_atoms(); ++i)
         {
             const auto current = i * NDIM;
@@ -222,12 +229,19 @@ void update_cell_lists(System& system)
 
             const auto to_index = get_atom_bin_index(
                 x0, system.cell_size, system.shape);
-
             auto& to_list = new_lists.at(to_index);
-            const auto x1 = rvec_sub(x0, to_list.origin);
 
-            std::copy_n(x1.cbegin(), NDIM,
-                        std::back_inserter(to_list.xs));
+            if (from_index == to_index)
+            {
+                std::copy_n(list.xs.cbegin() + current, NDIM,
+                            std::back_inserter(to_list.xs));
+            }
+            else {
+                const auto x1 = rvec_sub(x0, to_list.origin);
+                std::copy_n(x1.cbegin(), NDIM,
+                            std::back_inserter(to_list.xs));
+            }
+
             std::copy_n(list.vs.cbegin() + current, NDIM,
                         std::back_inserter(to_list.vs));
             std::copy_n(list.fs.cbegin() + current, NDIM,
