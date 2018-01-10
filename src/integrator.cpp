@@ -163,14 +163,6 @@ static void update_velocities_cell(CellList& list,
     }
 }
 
-// Move the current forces in list.fs to list.fs_prev and then set
-// all values in list.fs to 0.
-static void reset_forces_cell(CellList& list)
-{
-    list.fs.swap(list.fs_prev);
-    list.fs.assign(list.fs.size(), 0.0);
-}
-
 void run_velocity_verlet(System& system,
                          const ForceField& ff,
                          const Options& opts)
