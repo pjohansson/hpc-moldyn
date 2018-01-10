@@ -8,14 +8,7 @@ using dRVec = std::array<real, NDIM + 1>;
 // Simply return the difference between the two cell lists origins.
 static RVec calc_shift_between_cells(const CellList& from_list, const CellList& to_list)
 {
-    RVec shift {0.0, 0.0, 0.0};
-
-    for (int k = 0; k < NDIM; ++k)
-    {
-        shift[k] = to_list.origin[k] - from_list.origin[k];
-    }
-
-    return shift;
+    return rvec_sub(to_list.origin, from_list.origin);
 }
 
 // Calculate the distance between to atoms of input indices in a cell list.
