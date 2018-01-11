@@ -423,6 +423,58 @@ ADD_TEST(test_update_cell_lists_moves_positions_and_velocities_only,
         "list4 does not have the correct number of atoms set");
 )
 
+ADD_TEST(test_creating_cell_lists_adds_cell_neighbours,
+    const std::string title {"title of system"};
+    const RVec box_size {3.1, 3.1, 3.1}; // split into (3, 3, 3)
+    const float rcut = 0.5;
+
+    auto system = System(title, box_size);
+    create_cell_lists(system, rcut);
+
+    const auto expected_shape = IVec {3, 3, 3};
+    ASSERT_EQ_VEC(system.shape, expected_shape,
+        "the expected shape for this test was not achieved, fix the test");
+
+    // Cell numbering:
+    // ix 0:              ix 1:              ix 2:
+    // iz 2 |  2  5  8    iz 2 | 11 14 17    iz 2 | 20 23 26
+    //    1 |  1  4  7       1 | 10 13 16       1 | 19 22 25
+    //    0 |  0  3  6       0 |  9 12 15       0 | 18 21 24
+    //      ----------         ----------         ----------
+    // iy      0  1  2    iy      0  1  2    iy      0  1  2
+
+    // The middle cell (13) will be interacting towards 13 cells
+    const vector<size_t> to_neighbours_mid {
+        14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26
+    };
+    ASSERT_EQ_VEC(system.cell_lists[13].to_neighbours, to_neighbours_mid,
+        "to-neighbours are not added as expected for a fully surrounded cell");
+
+    // The middle cell of the uppermost left layer (5) will be
+    // interacting towards 8 cells
+    const vector<size_t> to_neighbours_upmid_left {7, 8, 10, 11, 13, 14, 16, 17};
+    ASSERT_EQ_VEC(system.cell_lists[5].to_neighbours, to_neighbours_upmid_left,
+        "to-neighbours are not added as expected for an "
+        "edge cell in a top layer");
+
+    // The middle cell of the outermost right layer (22) will be
+    // interacting towards 4 cells
+    const vector<size_t> to_neighbours_mid_right {23, 24, 25, 26};
+    ASSERT_EQ_VEC(system.cell_lists[22].to_neighbours, to_neighbours_mid_right,
+        "to-neighbours are not added as expected for an "
+        "edge cell in a rightmost layer");
+
+    // The middle cell of the lowermost left layer (3) will be
+    // interacting towards 9 cells
+    const vector<size_t> to_neighbours_downmid_left {
+        4, 6, 7, 9, 10, 12, 13, 15, 16
+    };
+    ASSERT_EQ_VEC(system.cell_lists[3].to_neighbours,
+        to_neighbours_downmid_left,
+        "to-neighbours are not added as expected for an "
+        "edge cell in a bottom layer");
+)
+
 RUN_TESTS(
     test_rvec_add_and_sub();
     test_cell_list_init();
@@ -435,4 +487,5 @@ RUN_TESTS(
     test_split_system_into_lists_creates_minimum_one_per_size();
     test_split_system_puts_atoms_in_correct_lists();
     test_update_cell_lists_moves_positions_and_velocities_only();
+    test_creating_cell_lists_adds_cell_neighbours();
 );
