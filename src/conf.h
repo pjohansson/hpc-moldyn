@@ -17,10 +17,11 @@ using real = double;
 using RVec = std::array<real, NDIM>;
 using IVec = std::array<uint64_t, NDIM>;
 
-// An atom's position, velocity and force.
-struct Atom {
-    RVec xs, vs, fs;
-};
+// Add two vectors: r = r1 + r2.
+RVec rvec_add(const RVec r1, const RVec r2);
+
+// Subtract a vector from another: r = r1 - r2.
+RVec rvec_sub(const RVec r1, const RVec r2);
 
 // A cell of atoms as a part of the whole system.
 class CellList {
@@ -37,7 +38,9 @@ public:
     // Add an atom with input position to the system.
     void add_atom(const real x, const real y, const real z);
 
-    Atom get_atom(const size_t index) const;
+    void update_num_atoms(void) {
+        natoms = static_cast<uint64_t>(xs.size() / NDIM);
+    }
 
     /************
     * Variables *
@@ -107,6 +110,15 @@ System read_conf_from_grofile(const std::string& filename);
 // Write the configuration to a Gromos formatted file.
 void write_conf_to_grofile(const System& system, const std::string& path);
 
+// Construct the (3D) cell list configuration for the input system by splitting
+// it into cells based on the input `rcut` value. Atoms are moved into their
+// correct cells.
 void create_cell_lists(System& system, const real rcut);
+
+// Update the cell lists by moving atoms to their correct cells. For every
+// atom, the position and velocity is moved as-is, the forces are set as
+// the previous force of the atom, and the new current force is set to 0.
+// This makes the update perfectly compatible with the Velocity Verlet scheme.
+void update_cell_lists(System& system);
 
 #endif // SYSTEM_CONF_H

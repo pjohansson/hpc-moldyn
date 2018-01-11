@@ -8,14 +8,7 @@ using dRVec = std::array<real, NDIM + 1>;
 // Simply return the difference between the two cell lists origins.
 static RVec calc_shift_between_cells(const CellList& from_list, const CellList& to_list)
 {
-    RVec shift {0.0, 0.0, 0.0};
-
-    for (int k = 0; k < NDIM; ++k)
-    {
-        shift[k] = to_list.origin[k] - from_list.origin[k];
-    }
-
-    return shift;
+    return rvec_sub(to_list.origin, from_list.origin);
 }
 
 // Calculate the distance between to atoms of input indices in a cell list.
@@ -79,6 +72,11 @@ static RVec calc_force_between_atoms(const dRVec&      dr,
 // Add the forces from internal interactions within a cell list.
 static void calc_forces_internal(CellList& list, const ForceField& ff)
 {
+    if (list.num_atoms() == 0)
+    {
+        return;
+    }
+
     for (unsigned i = 0; i < list.num_atoms() - 1; ++i)
     {
         for (unsigned j = i + 1; j < list.num_atoms(); ++j)
@@ -165,14 +163,6 @@ static void update_velocities_cell(CellList& list,
     }
 }
 
-// Move the current forces in list.fs to list.fs_prev and then set
-// all values in list.fs to 0.
-static void reset_forces_cell(CellList& list)
-{
-    list.fs.swap(list.fs_prev);
-    list.fs.assign(list.fs.size(), 0.0);
-}
-
 void run_velocity_verlet(System& system,
                          const ForceField& ff,
                          const Options& opts)
@@ -180,8 +170,9 @@ void run_velocity_verlet(System& system,
     for (auto& list : system.cell_lists)
     {
         update_positions_cell(list, ff, opts);
-        reset_forces_cell(list);
     }
+
+    update_cell_lists(system);
 
     // The force calculation is in a separate iteration since
     // it is not local to each cell list, which resetting the forces

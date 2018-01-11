@@ -35,6 +35,18 @@ ADD_TEST(test_calc_force,
     ASSERT_EQ_VEC(list.fs, expected, "forces are not calculated correctly");
 )
 
+ADD_TEST(test_calc_force_with_no_atoms_in_cell_works,
+    // Ensure that the internal loop calculation works for the edge
+    // case of no atoms in the cell.
+    CellList list (0, RVec {0.0, 0.0, 0.0}, RVec{1.0, 1.0, 1.0});
+
+    calc_forces_internal(list, TestFF);
+
+    const vector<double> expected;
+
+    ASSERT_EQ_VEC(list.fs, expected, "forces are not calculated correctly");
+)
+
 ADD_TEST(test_calc_force_outside_of_rcut_is_zero,
     CellList list (2, RVec {0.0, 0.0, 0.0}, RVec{1.0, 1.0, 1.0});
 
@@ -157,31 +169,13 @@ ADD_TEST(test_update_positions,
     ASSERT_EQ_VEC(list.xs, expected, "positions are not updated correctly");
 )
 
-ADD_TEST(test_reset_forces_sets_current_to_previous_and_resets,
-    auto list = CellList(2, RVec {0.0, 0.0, 0.0}, RVec {1.0, 1.0, 1.0});
-    list.add_atom(0.0, 0.0, 0.0);
-    list.add_atom(1.0, 0.0, 0.0);
-
-    constexpr real force = 1.0;
-    const vector<real> fs (list.xs.size(), force);
-
-    // Also set the previous forces to non-zero values which should be discarded
-    constexpr real force_prev = 0.5 * force;
-    const vector<real> fs_prev (list.xs.size(), force_prev);
-
-    list.fs = fs;
-    list.fs_prev = fs_prev;
-
-    const auto p0 = list.fs.data();
-    reset_forces_cell(list);
-    const auto p1 = list.fs_prev.data();
-
-    const vector<real> zeroes (list.xs.size(), 0.0);
-
-    ASSERT_EQ_VEC(list.fs, zeroes, "forces were not set to zero");
-    ASSERT_EQ_VEC(list.fs_prev, fs, "previous forces were not set to the current");
-    ASSERT_EQ(p0, p1, "the forces were copied instead of moved");
-)
+// Move the current forces in list.fs to list.fs_prev and then set
+// all values in list.fs to 0.
+static void reset_forces_cell(CellList& list)
+{
+    list.fs.swap(list.fs_prev);
+    list.fs.assign(list.fs.size(), 0.0);
+}
 
 ADD_TEST(test_velocity_verlet_step_single_list,
     const std::string title = "Test";
@@ -228,13 +222,17 @@ ADD_TEST(test_velocity_verlet_step_single_list,
 ADD_TEST(test_velocity_verlet_step_list_with_a_neighbour,
     const std::string title = "Test";
     const RVec box_size {2.0, 1.0, 1.0};
+    const RVec cell_size {1.0, 1.0, 1.0};
+
     auto system = System(title, box_size);
+    system.cell_size = cell_size;
+    system.shape = IVec {2, 1, 1};
 
     // Two lists separated by 1 along the x axis
-    auto list1 = CellList(2, RVec {0.0, 0.0, 0.0}, RVec {1.0, 1.0, 1.0});
-    auto list2 = CellList(2, RVec {1.0, 0.0, 0.0}, RVec {1.0, 1.0, 1.0});
-    list1.add_atom(0.0, 0.0, 0.0);
-    list2.add_atom(0.0, 0.0, 0.0);
+    auto list1 = CellList(2, RVec {0.0, 0.0, 0.0}, cell_size);
+    auto list2 = CellList(2, RVec {1.0, 0.0, 0.0}, cell_size);
+    list1.add_atom(0.6, 0.0, 0.0);
+    list2.add_atom(0.4, 0.0, 0.0);
 
     // Calculate the initial forces (no internal interactions)
     calc_forces_cell_to_cell(list1, list2, TestFF);
@@ -282,9 +280,12 @@ ADD_TEST(test_velocity_verlet_step_list_with_no_neighbours_does_nothing,
     const RVec box_size {2.0, 1.0, 1.0};
     auto system = System(title, box_size);
 
+    system.cell_size = RVec {1.0, 1.0, 1.0};
+    system.shape = IVec {2, 1, 1};
+
     // Two lists separated by 1 along the x axis
-    auto list1 = CellList(2, RVec {0.0, 0.0, 0.0}, RVec {1.0, 1.0, 1.0});
-    auto list2 = CellList(2, RVec {1.0, 0.0, 0.0}, RVec {1.0, 1.0, 1.0});
+    auto list1 = CellList(2, RVec {0.0, 0.0, 0.0}, system.cell_size);
+    auto list2 = CellList(2, RVec {1.0, 0.0, 0.0}, system.cell_size);
     list1.add_atom(0.0, 0.0, 0.0);
     list2.add_atom(0.0, 0.0, 0.0);
 
@@ -312,6 +313,7 @@ ADD_TEST(test_velocity_verlet_step_list_with_no_neighbours_does_nothing,
 
 RUN_TESTS(
     test_calc_force();
+    test_calc_force_with_no_atoms_in_cell_works();
     test_calc_force_outside_of_rcut_is_zero();
     test_calc_force_adds_total_force();
     test_calc_force_between_two_lists();
@@ -320,5 +322,4 @@ RUN_TESTS(
     test_velocity_verlet_step_single_list();
     test_velocity_verlet_step_list_with_a_neighbour();
     test_velocity_verlet_step_list_with_no_neighbours_does_nothing();
-    test_reset_forces_sets_current_to_previous_and_resets();
 )
