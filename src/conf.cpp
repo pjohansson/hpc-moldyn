@@ -123,19 +123,26 @@ void write_conf_to_grofile(const System& system, const std::string& path)
     out.setf(std::ios::fixed);
     out.precision(3);
 
-    uint64_t n = 0;
+    uint64_t n = 1;
 
     for (const auto &list : system.cell_lists)
     {
         for (unsigned i = 0; i < list.num_atoms(); ++i)
         {
+            const auto x0 = RVec {
+                list.xs.at(i * NDIM + XX),
+                list.xs.at(i * NDIM + YY),
+                list.xs.at(i * NDIM + ZZ)
+            };
+            const auto xabs = rvec_add(x0, list.origin);
+
             out << std::setw(5) << std::right << n
                 << std::setw(5) << std::left << RESIDUE_NAME
                 << std::setw(5) << ATOM_NAME
                 << std::setw(5) << n
-                << std::setw(8) << list.xs.at(i * NDIM + XX)
-                << std::setw(8) << list.xs.at(i * NDIM + YY)
-                << std::setw(8) << list.xs.at(i * NDIM + ZZ)
+                << std::setw(8) << xabs[XX]
+                << std::setw(8) << xabs[YY]
+                << std::setw(8) << xabs[ZZ]
                 << '\n';
 
             ++n;

@@ -37,6 +37,7 @@ struct Options {
     double dt, dt2;
 };
 
-constexpr ForceField DefaultFF = ForceField(1.0, 1.0, 1.0, 1.0);
+constexpr ForceField DefaultFF = ForceField(4.39e-1, 0.28, 1.1, 12e-5);
+constexpr Options DefaultOpts = Options(5e-12);
 
 #endif // SIMULATION_PARAMETERS_H
