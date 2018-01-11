@@ -1,8 +1,9 @@
 #include <iostream>
 
+#include "analytics.cpp"
 #include "conf.h"
-#include "params.h"
 #include "integrator.h"
+#include "params.h"
 
 struct InputArgs {
     std::string input_conf,
@@ -62,8 +63,11 @@ int main(const int argc, const char* argv[])
     create_cell_lists(system, DefaultFF.rcut);
     std::cerr << "done\n";
 
-    std::cerr << "\n"
-              << "Simulating " << input_args.num_steps << " steps:\n";
+    std::cerr << '\n';
+    describe_system_config(system);
+    std::cerr << '\n';
+
+    std::cerr << "Simulating " << input_args.num_steps << " steps:\n";
 
     for (unsigned step = 0; step < input_args.num_steps; ++step)
     {
