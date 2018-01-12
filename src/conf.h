@@ -111,9 +111,10 @@ System read_conf_from_grofile(const std::string& filename);
 void write_conf_to_grofile(const System& system, const std::string& path);
 
 // Construct the (3D) cell list configuration for the input system by splitting
-// it into cells based on the input `rcut` value. Atoms are moved into their
-// correct cells. 
-void create_cell_lists(System& system, const real rcut);
+// it into cells based on the input `target_size`. The cells will have sides
+// that are *at least* that big in each dimension. Atoms are moved into their
+// correct cells.
+void create_cell_lists(System& system, const real target_size);
 
 // Update the cell lists by moving atoms to their correct cells. For every
 // atom, the position and velocity is moved as-is, the forces are set as

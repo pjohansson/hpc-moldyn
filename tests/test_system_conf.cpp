@@ -154,14 +154,14 @@ ADD_TEST(test_system_write_grofile,
     ASSERT_EQ_VEC(system.cell_lists[0].xs, xs, "positions were not written correctly");
 )
 
-ADD_TEST(test_split_system_into_lists_of_size_2x_rcut_gives_correct_shape,
+ADD_TEST(test_split_system_into_lists_of_size_rcut_gives_correct_shape,
     const std::string title {"title of system"};
     const RVec box_size {10.0, 20.0, 30.0};
     const float rcut = 1.1;
 
-    const auto nx = static_cast<uint64_t>(floor(box_size[XX] / (2.0 * rcut)));
-    const auto ny = static_cast<uint64_t>(floor(box_size[YY] / (2.0 * rcut)));
-    const auto nz = static_cast<uint64_t>(floor(box_size[ZZ] / (2.0 * rcut)));
+    const auto nx = static_cast<uint64_t>(floor(box_size[XX] / rcut));
+    const auto ny = static_cast<uint64_t>(floor(box_size[YY] / rcut));
+    const auto nz = static_cast<uint64_t>(floor(box_size[ZZ] / rcut));
     const auto expected_shape = IVec {nx, ny, nz};
 
     const auto dx = box_size[XX] / nx;
@@ -229,7 +229,7 @@ ADD_TEST(test_split_system_into_lists_creates_minimum_one_per_size,
 ADD_TEST(test_split_system_puts_atoms_in_correct_lists,
     const std::string title {"title of system"};
     const RVec box_size {4.1, 1.0, 1.0}; // split into (2, 1, 1)
-    const float rcut = 1.0;
+    const float rcut = 2.0;
 
     const auto expected_shape = IVec {2, 1, 1};
 
@@ -426,7 +426,7 @@ ADD_TEST(test_update_cell_lists_moves_positions_and_velocities_only,
 ADD_TEST(test_creating_cell_lists_adds_cell_neighbours,
     const std::string title {"title of system"};
     const RVec box_size {3.1, 3.1, 3.1}; // split into (3, 3, 3)
-    const float rcut = 0.5;
+    const float rcut = 1.0;
 
     auto system = System(title, box_size);
     create_cell_lists(system, rcut);
@@ -483,7 +483,7 @@ RUN_TESTS(
     test_system_adds_num_atoms_from_lists();
     test_system_read_grofile();
     test_system_write_grofile();
-    test_split_system_into_lists_of_size_2x_rcut_gives_correct_shape();
+    test_split_system_into_lists_of_size_rcut_gives_correct_shape();
     test_split_system_into_lists_creates_minimum_one_per_size();
     test_split_system_puts_atoms_in_correct_lists();
     test_update_cell_lists_moves_positions_and_velocities_only();
