@@ -1,3 +1,4 @@
+#include "analytics.h"
 #include "conf.h"
 #include "params.h"
 
@@ -6,6 +7,7 @@
 
 // Run through a simulation step using the Velocity Verlet scheme.
 void run_velocity_verlet(System& system,
+                         Benchmark& bench,
                          const ForceField& ff,
                          const Options& opts);
 

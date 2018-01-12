@@ -8,6 +8,7 @@ add_compile_options(-Wall -std=c++14 -O3)
 
 add_executable(md src/main.cpp)
 
+add_library(analytics STATIC src/analytics.cpp)
 add_library(conf STATIC src/conf.cpp)
 add_library(integrator STATIC src/integrator.cpp)
-target_link_libraries(md conf integrator)
+target_link_libraries(md analytics conf integrator)

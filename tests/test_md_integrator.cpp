@@ -2,6 +2,7 @@
 
 #include "tests/utils.h"
 
+#include "src/analytics.cpp"
 #include "src/conf.h"
 #include "src/params.h"
 #include "src/integrator.cpp"
@@ -206,8 +207,9 @@ ADD_TEST(test_velocity_verlet_step_single_list,
     update_velocities_cell(list, TestFF, TestOpts); // x2, v2, f2, f1
 
     // With the function
-    run_velocity_verlet(system, TestFF, TestOpts);
-    run_velocity_verlet(system, TestFF, TestOpts);
+    Benchmark bench;
+    run_velocity_verlet(system, bench, TestFF, TestOpts);
+    run_velocity_verlet(system, bench, TestFF, TestOpts);
 
     ASSERT_EQ_VEC(system.cell_lists[0].xs, list.xs,
         "positions were not updated correctly");
@@ -255,7 +257,8 @@ ADD_TEST(test_velocity_verlet_step_list_with_a_neighbour,
     update_velocities_cell(list2, TestFF, TestOpts);
 
     // With the function
-    run_velocity_verlet(system, TestFF, TestOpts);
+    Benchmark bench;
+    run_velocity_verlet(system, bench, TestFF, TestOpts);
 
     ASSERT_EQ_VEC(system.cell_lists[0].xs, list1.xs,
         "positions were not updated correctly in list1");
@@ -293,7 +296,8 @@ ADD_TEST(test_velocity_verlet_step_list_with_no_neighbours_does_nothing,
     system.cell_lists.push_back(list1);
     system.cell_lists.push_back(list2);
 
-    run_velocity_verlet(system, TestFF, TestOpts);
+    Benchmark bench;
+    run_velocity_verlet(system, bench, TestFF, TestOpts);
 
     const vector<real> zeroes (list1.xs.size(), 0.0);
 

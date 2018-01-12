@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include "analytics.cpp"
+#include "analytics.h"
 #include "conf.h"
 #include "integrator.h"
 #include "params.h"
@@ -67,6 +67,8 @@ int main(const int argc, const char* argv[])
     describe_system_config(system);
     std::cerr << '\n';
 
+    Benchmark benchmark;
+
     std::cerr << "Simulating " << input_args.num_steps << " steps:\n";
 
     for (unsigned step = 0; step < input_args.num_steps; ++step)
@@ -76,8 +78,10 @@ int main(const int argc, const char* argv[])
             std::cerr << "\rstep " << step;
         }
 
-        run_velocity_verlet(system, DefaultFF, DefaultOpts);
+        run_velocity_verlet(system, benchmark, DefaultFF, DefaultOpts);
     }
+
+    benchmark.finalize();
 
     std::cerr << "\r                                           \r\n"
               << "Finished.\n";
@@ -85,6 +89,9 @@ int main(const int argc, const char* argv[])
     std::cerr << "Writing final system to disk ... ";
     write_conf_to_grofile(system, input_args.output_conf);
     std::cerr << "done\n";
+
+    std::cerr << '\n';
+    print_benchmark(benchmark);
 
     return 0;
 }
