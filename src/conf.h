@@ -112,7 +112,7 @@ void write_conf_to_grofile(const System& system, const std::string& path);
 
 // Construct the (3D) cell list configuration for the input system by splitting
 // it into cells based on the input `rcut` value. Atoms are moved into their
-// correct cells.
+// correct cells. 
 void create_cell_lists(System& system, const real rcut);
 
 // Update the cell lists by moving atoms to their correct cells. For every

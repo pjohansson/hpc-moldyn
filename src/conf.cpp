@@ -123,19 +123,26 @@ void write_conf_to_grofile(const System& system, const std::string& path)
     out.setf(std::ios::fixed);
     out.precision(3);
 
-    uint64_t n = 0;
+    uint64_t n = 1;
 
     for (const auto &list : system.cell_lists)
     {
         for (unsigned i = 0; i < list.num_atoms(); ++i)
         {
+            const auto x0 = RVec {
+                list.xs.at(i * NDIM + XX),
+                list.xs.at(i * NDIM + YY),
+                list.xs.at(i * NDIM + ZZ)
+            };
+            const auto xabs = rvec_add(x0, list.origin);
+
             out << std::setw(5) << std::right << n
                 << std::setw(5) << std::left << RESIDUE_NAME
                 << std::setw(5) << ATOM_NAME
                 << std::setw(5) << n
-                << std::setw(8) << list.xs.at(i * NDIM + XX)
-                << std::setw(8) << list.xs.at(i * NDIM + YY)
-                << std::setw(8) << list.xs.at(i * NDIM + ZZ)
+                << std::setw(8) << xabs[XX]
+                << std::setw(8) << xabs[YY]
+                << std::setw(8) << xabs[ZZ]
                 << '\n';
 
             ++n;
@@ -159,6 +166,25 @@ static size_t get_index_within_limits(const RVec x0,
     return static_cast<size_t>(std::max(0, std::min((int) num_bins[axis] - 1, i)));
 }
 
+static size_t position_to_index(const size_t ix,
+                                const size_t iy,
+                                const size_t iz,
+                                const IVec shape)
+{
+    return ix * shape[YY] * shape[ZZ] + iy * shape[ZZ] + iz;
+}
+
+static IVec index_to_position(const size_t index, const IVec shape)
+{
+    const auto ix = static_cast<uint64_t>(
+        (index / (shape[YY] * shape[ZZ])) % shape[XX]
+    );
+    const auto iy = static_cast<uint64_t>((index / shape[ZZ]) % shape[YY]);
+    const auto iz = static_cast<uint64_t>(index % shape[ZZ]);
+
+    return IVec {ix, iy, iz};
+}
+
 static size_t get_atom_bin_index(const RVec x0,
                                  const RVec cell_size,
                                  const IVec system_shape)
@@ -167,9 +193,64 @@ static size_t get_atom_bin_index(const RVec x0,
     const auto iy = get_index_within_limits(x0, cell_size, system_shape, YY);
     const auto iz = get_index_within_limits(x0, cell_size, system_shape, ZZ);
 
-    return ix * system_shape[YY] * system_shape[ZZ]
-        + iy * system_shape[ZZ]
-        + iz;
+    return position_to_index(ix, iy, iz, system_shape);
+}
+
+static bool indices_are_inside_system(const int ix,
+                                      const int iy,
+                                      const int iz,
+                                      const IVec shape)
+{
+    return ((ix >= 0) && (ix < static_cast<int>(shape[XX]))
+        && (iy >= 0) && (iy < static_cast<int>(shape[YY]))
+        && (iz >= 0) && (iz < static_cast<int>(shape[ZZ])));
+}
+
+static void add_neighbouring_cells(System& system)
+{
+    for (unsigned index = 0; index < system.cell_lists.size(); ++index)
+    {
+        const auto position = index_to_position(index, system.shape);
+        const auto ix = static_cast<int>(position[XX]);
+        const auto iy = static_cast<int>(position[YY]);
+        const auto iz = static_cast<int>(position[ZZ]);
+
+        // std::vector<size_t> lower_neighbours;
+        std::vector<size_t> upper_neighbours;
+        bool to_upper = false;
+
+        for (int i = ix - 1; i <= ix + 1; ++i)
+        {
+            for (int j = iy - 1; j <= iy + 1; ++j)
+            {
+                for (int k = iz - 1; k <= iz + 1; ++k)
+                {
+                    if ((i == ix) && (j == iy) && (k == iz))
+                    {
+                        to_upper = true;
+                    }
+                    else if (indices_are_inside_system(i, j, k, system.shape))
+                    {
+                        const auto to_index = position_to_index(
+                            i, j, k,
+                            system.shape
+                        );
+
+                        if (to_upper)
+                        {
+                            upper_neighbours.push_back(to_index);
+                        }
+                        // else
+                        // {
+                        //     lower_neighbours.push_back(to_index);
+                        // }
+                    }
+                }
+            }
+        }
+
+        system.cell_lists.at(index).to_neighbours = std::move(upper_neighbours);
+    }
 }
 
 void update_cell_lists(System& system)
@@ -313,4 +394,6 @@ void create_cell_lists(System& system, const real rcut)
 
         update_cell_lists(system);
     }
+
+    add_neighbouring_cells(system);
 }
