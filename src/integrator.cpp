@@ -164,19 +164,25 @@ static void update_velocities_cell(CellList& list,
 }
 
 void run_velocity_verlet(System& system,
+                         Benchmark& bench,
                          const ForceField& ff,
                          const Options& opts)
 {
+    bench.start_position_update();
     for (auto& list : system.cell_lists)
     {
         update_positions_cell(list, ff, opts);
     }
+    bench.stop_position_update();
 
+    bench.start_cell_list_update();
     update_cell_lists(system);
+    bench.stop_cell_list_update();
 
     // The force calculation is in a separate iteration since
     // it is not local to each cell list, which resetting the forces
     // in each iteration will mess up.
+    bench.start_force_update();
     for (auto& list : system.cell_lists)
     {
         calc_forces_internal(list, ff);
@@ -185,9 +191,12 @@ void run_velocity_verlet(System& system,
             calc_forces_cell_to_cell(list, system.cell_lists.at(i), ff);
         }
     }
+    bench.stop_force_update();
 
+    bench.start_velocity_update();
     for (auto& list : system.cell_lists)
     {
         update_velocities_cell(list, ff, opts);
     }
+    bench.stop_velocity_update();
 }

@@ -327,10 +327,8 @@ void update_cell_lists(System& system)
     system.cell_lists = std::move(new_lists);
 }
 
-void create_cell_lists(System& system, const real rcut)
+void create_cell_lists(System& system, const real target_size)
 {
-    const real target_size = 2.0 * rcut;
-
     const auto nx = std::max((uint64_t) 1, static_cast<uint64_t>(
         floor(system.box_size[XX] / target_size)));
     const auto ny = std::max((uint64_t) 1, static_cast<uint64_t>(

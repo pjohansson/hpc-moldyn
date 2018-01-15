@@ -1,6 +1,8 @@
+#include <ctime>
+#include <iomanip>
 #include <iostream>
 
-#include "analytics.cpp"
+#include "analytics.h"
 #include "conf.h"
 #include "integrator.h"
 #include "params.h"
@@ -49,23 +51,25 @@ int main(const int argc, const char* argv[])
         return 1;
     }
 
-    std::cout << "input arguments: "
+    std::cout << "Input arguments: "
               << "conf = " << input_args.input_conf
               << ", output = " << input_args.output_conf
               << ", num_steps = " << input_args.num_steps
-              << '\n';
+              << "\n\n";
 
     std::cerr << "Reading configuration ... ";
     auto system = read_conf_from_grofile(input_args.input_conf);
-    std::cerr << "done\n";
+    std::cerr << "done.\n";
 
     std::cerr << "Setting up system ... ";
     create_cell_lists(system, DefaultFF.rcut);
-    std::cerr << "done\n";
+    std::cerr << "done.\n";
 
     std::cerr << '\n';
     describe_system_config(system);
     std::cerr << '\n';
+
+    Benchmark benchmark;
 
     std::cerr << "Simulating " << input_args.num_steps << " steps:\n";
 
@@ -76,15 +80,26 @@ int main(const int argc, const char* argv[])
             std::cerr << "\rstep " << step;
         }
 
-        run_velocity_verlet(system, DefaultFF, DefaultOpts);
+        run_velocity_verlet(system, benchmark, DefaultFF, DefaultOpts);
     }
 
-    std::cerr << "\r                                           \r\n"
-              << "Finished.\n";
+    benchmark.finalize();
 
-    std::cerr << "Writing final system to disk ... ";
+    std::cerr << "\r                                                  \r"
+              << "Finished.\n\n";
+
+    std::cerr << "Writing final system to disk as '"
+        << input_args.output_conf
+        << "' ... ";
     write_conf_to_grofile(system, input_args.output_conf);
-    std::cerr << "done\n";
+    std::cerr << "done.\n";
+
+    std::cerr << '\n';
+    print_benchmark(benchmark);
+
+    auto t = std::time(nullptr);
+    std::cerr << "\nFinished simulation at "
+        << std::put_time(std::localtime(&t), "%c") << ".\n";
 
     return 0;
 }
