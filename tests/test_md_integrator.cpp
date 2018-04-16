@@ -21,12 +21,14 @@ constexpr Options TestOpts { 5e-3 };
 ADD_TEST(test_calc_force,
     CellList list (2, RVec {0.0, 0.0, 0.0}, RVec{1.0, 1.0, 1.0});
 
+    const auto dx = 0.5;
     list.add_atom(0.0, 0.0, 0.0);
-    list.add_atom(1.0, 0.0, 0.0);
+    list.add_atom(dx, 0.0, 0.0);
 
     calc_forces_internal(list, TestFF);
 
-    const auto force = 24.0; // epsilon = 24, sigma = 1, dr = 1 (along x only)
+    const auto force = 48.0 * dx
+        * (1.0 / std::pow(dx, 14) - 0.5 / std::pow(dx, 8));
 
     const vector<double> expected {
         force, 0.0, 0.0,

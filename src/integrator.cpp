@@ -55,10 +55,11 @@ static RVec calc_force_between_atoms(const dRVec&      dr,
 
     if (dr2 > 0.0 && dr2 <= ff.rcut2)
     {
-        const auto dr6 = dr2 * dr2 * dr2;
-        const auto dr12 = dr6 * dr6;
+        const auto dr2inv = 1.0 / dr2;
+        const auto dr8inv = std::pow(dr2inv, 4);
+        const auto dr14inv = std::pow(dr2inv, 7);
 
-        const auto force = (ff.c12 / dr12 - ff.c6 / dr6) / dr2;
+        const auto force = 48.0 * (dr14inv - 0.5 * dr8inv);
 
         for (int k = 0; k < NDIM; ++k)
         {

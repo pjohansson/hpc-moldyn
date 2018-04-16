@@ -70,7 +70,7 @@ void CellList::add_atom(const real x, const real y, const real z)
     ++natoms;
 }
 
-System read_conf_from_grofile(const std::string& path)
+System read_conf_from_grofile(const std::string& path, const real sigma)
 {
     std::ifstream ifs { path, std::ifstream::in };
 
@@ -89,17 +89,17 @@ System read_conf_from_grofile(const std::string& path)
     {
         getline(ifs, buffer);
 
-        const auto x = std::stod(buffer.substr(20, 8));
-        const auto y = std::stod(buffer.substr(28, 8));
-        const auto z = std::stod(buffer.substr(36, 8));
+        const auto x = std::stod(buffer.substr(20, 8)) / sigma;
+        const auto y = std::stod(buffer.substr(28, 8)) / sigma;
+        const auto z = std::stod(buffer.substr(36, 8)) / sigma;
 
         list.add_atom(x, y, z);
     }
 
     getline(ifs, buffer);
-    const auto dx = std::stod(buffer.substr(0, 10));
-    const auto dy = std::stod(buffer.substr(10, 10));
-    const auto dz = std::stod(buffer.substr(20, 10));
+    const auto dx = std::stod(buffer.substr(0, 10)) / sigma;
+    const auto dy = std::stod(buffer.substr(10, 10)) / sigma;
+    const auto dz = std::stod(buffer.substr(20, 10)) / sigma;
 
     const RVec box_size {dx, dy, dz};
     list.size = box_size;
@@ -110,7 +110,9 @@ System read_conf_from_grofile(const std::string& path)
     return system;
 }
 
-void write_conf_to_grofile(const System& system, const std::string& path)
+void write_conf_to_grofile(const System& system,
+                           const std::string& path,
+                           const real sigma)
 {
     constexpr char ATOM_NAME[2] = "C";
     constexpr char RESIDUE_NAME[4] = "SOL";
@@ -140,18 +142,18 @@ void write_conf_to_grofile(const System& system, const std::string& path)
                 << std::setw(5) << std::left << RESIDUE_NAME
                 << std::setw(5) << ATOM_NAME
                 << std::setw(5) << n
-                << std::setw(8) << xabs[XX]
-                << std::setw(8) << xabs[YY]
-                << std::setw(8) << xabs[ZZ]
+                << std::setw(8) << xabs[XX] * sigma
+                << std::setw(8) << xabs[YY] * sigma
+                << std::setw(8) << xabs[ZZ] * sigma
                 << '\n';
 
             ++n;
         }
     }
 
-    out << std::setw(9) << std::right << system.box_size[0] << ' '
-        << std::setw(9) << system.box_size[1] << ' '
-        << std::setw(9) << system.box_size[2] << '\n';
+    out << std::setw(9) << std::right << system.box_size[0] * sigma << ' '
+        << std::setw(9) << system.box_size[1] * sigma << ' '
+        << std::setw(9) << system.box_size[2] * sigma << '\n';
 }
 
 static size_t get_index_within_limits(const RVec x0,

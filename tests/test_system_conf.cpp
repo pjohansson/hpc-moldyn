@@ -102,7 +102,8 @@ ADD_TEST(test_system_adds_num_atoms_from_lists,
 
 ADD_TEST(test_system_read_grofile,
     const string path = TEST_FILES_DIRECTORY + string{"/grofile_small.gro"};
-    const auto system = read_conf_from_grofile(path);
+    const auto sigma = 3.0;
+    const auto system = read_conf_from_grofile(path, sigma);
 
     ASSERT_EQ(system.title, "small test grofile", "incorrect title read");
 
@@ -110,11 +111,13 @@ ADD_TEST(test_system_read_grofile,
     ASSERT_EQ(system.cell_lists.size(), 1, "the atoms were not added to a single list");
     ASSERT_EQ(system.cell_lists[0].num_atoms(), 3, "incorrect number of atoms read");
 
+    // All coordinates are adjusted into non-dimensional by dividing with sigma
     const vector<double> xs {
-        0.129, 0.079, 0.464,
-        0.119, 0.061, 0.314,
-        0.109, 0.042, 0.165
+        0.129 / sigma, 0.079 / sigma, 0.464 / sigma,
+        0.119 / sigma, 0.061 / sigma, 0.314 / sigma,
+        0.109 / sigma, 0.042 / sigma, 0.165 / sigma
     };
+
     ASSERT_EQ_VEC(system.cell_lists[0].xs, xs, "positions were not read correctly");
 
     const vector<double> zeroes (9, 0.0);
@@ -122,7 +125,12 @@ ADD_TEST(test_system_read_grofile,
     ASSERT_EQ_VEC(system.cell_lists[0].fs, zeroes, "forces are not zero-initialized");
     ASSERT_EQ_VEC(system.cell_lists[0].fs_prev, zeroes, "forces (prev) are not zero-initialized");
 
-    const array<double, 3> box_size { 216.00000, 4.67650, 110.00000 };
+    const array<double, 3> box_size {
+        216.00000 / sigma,
+        4.67650 / sigma,
+        110.00000 / sigma
+    };
+
     ASSERT_EQ_VEC(system.box_size, box_size, "incorrect box size set to system");
     ASSERT_EQ_VEC(system.cell_lists[0].size, box_size, "incorrect box size set to cell list");
 )
@@ -130,6 +138,7 @@ ADD_TEST(test_system_read_grofile,
 ADD_TEST(test_system_write_grofile,
     const string path = TEST_FILES_DIRECTORY + string{"/.out_test01.gro"};
 
+    constexpr real sigma = 3.0;
     const std::string title {"title of system"};
     const RVec box_size {1.0, 2.0, 3.0};
 
@@ -144,8 +153,8 @@ ADD_TEST(test_system_write_grofile,
     output.cell_lists.push_back(list1);
     output.cell_lists.push_back(list2);
 
-    write_conf_to_grofile(output, path);
-    const auto system = read_conf_from_grofile(path);
+    write_conf_to_grofile(output, path, sigma);
+    const auto system = read_conf_from_grofile(path, sigma);
 
     ASSERT_EQ(system.title, title, "title was not written correctly");
     ASSERT_EQ_VEC(system.box_size, box_size, "box dimensions were not written correctly");

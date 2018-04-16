@@ -104,11 +104,15 @@ public:
     std::string title;
 };
 
-// Read a configuration from a Gromos formatted file.
-System read_conf_from_grofile(const std::string& filename);
+// Read a configuration from a Gromos formatted file. Gromos is written
+// with positions in nm, so use the sigma factor to convert.
+System read_conf_from_grofile(const std::string& filename, const real sigma);
 
-// Write the configuration to a Gromos formatted file.
-void write_conf_to_grofile(const System& system, const std::string& path);
+// Write the configuration to a Gromos formatted file. Gromos is written
+// with positions in nm, so use the sigma factor to convert.
+void write_conf_to_grofile(const System& system,
+                           const std::string& path,
+                           const real sigma);
 
 // Construct the (3D) cell list configuration for the input system by splitting
 // it into cells based on the input `target_size`. The cells will have sides

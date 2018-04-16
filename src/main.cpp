@@ -58,7 +58,7 @@ int main(const int argc, const char* argv[])
               << "\n\n";
 
     std::cerr << "Reading configuration ... ";
-    auto system = read_conf_from_grofile(input_args.input_conf);
+    auto system = read_conf_from_grofile(input_args.input_conf, DefaultFF.sigma);
     std::cerr << "done.\n";
 
     std::cerr << "Setting up system ... ";
@@ -91,7 +91,7 @@ int main(const int argc, const char* argv[])
     std::cerr << "Writing final system to disk as '"
         << input_args.output_conf
         << "' ... ";
-    write_conf_to_grofile(system, input_args.output_conf);
+    write_conf_to_grofile(system, input_args.output_conf, DefaultFF.sigma);
     std::cerr << "done.\n";
 
     std::cerr << '\n';
