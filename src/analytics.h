@@ -1,6 +1,7 @@
 #include <chrono>
 
 #include "conf.h"
+#include "params.h"
 
 #ifndef ANALYTICS_H
 #define ANALYTICS_H
@@ -47,8 +48,17 @@ private:
                                                total_start;
 };
 
+// Keep track of the energetics of the system during a simulation.
+struct Energetics {
+    std::vector<double> potential,
+                        temperature;
+};
+
 void describe_system_config(const System& system);
 void show_atom_cell_list_distribution(const System& system);
 void print_benchmark(const Benchmark& bench);
+void calculate_system_energetics(Energetics& energetics,
+                                 const System& system,
+                                 const ForceField& ff);
 
 #endif // ANALYTICS_H
