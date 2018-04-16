@@ -60,5 +60,7 @@ void print_benchmark(const Benchmark& bench);
 void calculate_system_energetics(Energetics& energetics,
                                  const System& system,
                                  const ForceField& ff);
+                                 
+double calc_system_temperature(const System& system);
 
 #endif // ANALYTICS_H

@@ -2,7 +2,11 @@
 #include <cmath>
 #include <fstream>
 #include <iomanip>
+#include <random>
 
+#include <iostream>
+
+#include "analytics.h"
 #include "conf.h"
 
 RVec rvec_add(const RVec r1, const RVec r2)
@@ -396,4 +400,30 @@ void create_cell_lists(System& system, const real target_size)
     }
 
     add_neighbouring_cells(system);
+}
+
+void gen_system_velocities(System& system, const real Tref)
+{
+    std::random_device rd;
+    std::mt19937 gen(rd());
+
+    std::normal_distribution<> normal(sqrt(Tref), Tref / 100.0);
+
+    for (auto& list : system.cell_lists)
+    {
+        for (auto& v : list.vs)
+        {
+            v = normal(gen);
+        }
+    }
+
+    const auto Tscale = sqrt(Tref / calc_system_temperature(system));
+
+    for (auto& list : system.cell_lists)
+    {
+        for (auto& v : list.vs)
+        {
+            v *= Tscale;
+        }
+    }
 }

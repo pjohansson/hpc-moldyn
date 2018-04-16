@@ -177,7 +177,7 @@ void print_benchmark(const Benchmark& bench)
         << calc_seconds(bench.simulation_total) << '\n';
 }
 
-double calculate_system_temperature(const System& system)
+double calc_system_temperature(const System& system)
 {
     double Ekin_total = 0.0;
 
@@ -203,7 +203,8 @@ double calculate_system_temperature(const System& system)
     return temperature;
 }
 
-double calc_system_potential_energy(const System& system, const ForceField& ff)
+static double calc_system_potential_energy(const System& system,
+                                           const ForceField& ff)
 {
     double Epot = 0.0;
 
@@ -270,5 +271,5 @@ void calculate_system_energetics(Energetics& energy,
                                  const ForceField& ff)
 {
     energy.potential.push_back(calc_system_potential_energy(system, ff));
-    energy.temperature.push_back(calculate_system_temperature(system));
+    energy.temperature.push_back(calc_system_temperature(system));
 }

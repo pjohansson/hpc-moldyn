@@ -1,10 +1,12 @@
 #include <array>
 #include <cmath>
+#include <random>
 #include <string>
 #include <vector>
 
 #include "tests/utils.h"
 
+#include "src/analytics.cpp"
 #include "src/conf.cpp"
 
 using namespace std;
@@ -484,6 +486,44 @@ ADD_TEST(test_creating_cell_lists_adds_cell_neighbours,
         "edge cell in a bottom layer");
 )
 
+ADD_TEST(test_generate_velocities_at_temperature_gets_close,
+    constexpr unsigned num_atoms = 100;
+    constexpr real xmax = 10.0;
+
+    CellList list (num_atoms, RVec {0.0, 0.0, 0.0}, RVec {xmax, xmax, xmax});
+    std::mt19937 gen(1729);
+    std::uniform_real_distribution<> distr(0.0, xmax);
+
+    for (unsigned i = 0; i < num_atoms; ++i)
+    {
+        const auto x = distr(gen);
+        const auto y = distr(gen);
+        const auto z = distr(gen);
+
+        list.add_atom(x, y, z);
+    }
+
+    ASSERT_EQ(list.num_atoms(), num_atoms,
+        "the correct number of atoms was not generated");
+
+    const std::string title {"title of system"};
+    const RVec box_size {2.0, 2.0, 1.0};
+    auto system = System(title, box_size);
+
+    system.cell_lists.push_back(list);
+
+    ASSERT_EQ(calc_system_temperature(system), 0.0,
+        "system temperature is not initialized to 0");
+
+    constexpr real Tref = 90.0;
+    gen_system_velocities(system, Tref);
+
+    const auto Tdiff_rel = abs(calc_system_temperature(system) - Tref) / Tref;
+
+    ASSERT(static_cast<bool>(Tdiff_rel < 0.01),
+        "system velocities are not initialized to the correct temperature");
+)
+
 RUN_TESTS(
     test_rvec_add_and_sub();
     test_cell_list_init();
@@ -497,4 +537,5 @@ RUN_TESTS(
     test_split_system_puts_atoms_in_correct_lists();
     test_update_cell_lists_moves_positions_and_velocities_only();
     test_creating_cell_lists_adds_cell_neighbours();
+    test_generate_velocities_at_temperature_gets_close();
 );
