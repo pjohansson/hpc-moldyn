@@ -126,4 +126,8 @@ void create_cell_lists(System& system, const real target_size);
 // This makes the update perfectly compatible with the Velocity Verlet scheme.
 void update_cell_lists(System& system);
 
+// Generate velocities for all atoms in the system around an input reference
+// temperature.
+void gen_system_velocities(System& system, const real Tref)
+
 #endif // SYSTEM_CONF_H
