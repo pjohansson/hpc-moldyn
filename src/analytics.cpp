@@ -1,5 +1,7 @@
+#include <cmath>
 #include <iomanip>
 #include <iostream>
+#include <numeric> // accumulate
 
 #include "analytics.h"
 
@@ -173,4 +175,101 @@ void print_benchmark(const Benchmark& bench)
         << std::setw(time_length + sep_length)
         << std::right << std::setprecision(1) << std::fixed
         << calc_seconds(bench.simulation_total) << '\n';
+}
+
+double calc_system_temperature(const System& system)
+{
+    double Ekin_total = 0.0;
+
+    for (const auto& cell : system.cell_lists)
+    {
+        // Use a simple fold with a lambda expression to square all velocities
+        // independently, since we only have one mass.
+        const auto Ekin = std::accumulate(
+            cell.vs.cbegin(),
+            cell.vs.cend(),
+            0.0,
+            [](const real acc, const real value) {
+                return acc + std::pow(value, 2);
+            }
+        );
+
+        Ekin_total += 0.5 * Ekin;
+    }
+
+    const auto degrees_of_freedom = NDIM * (system.num_atoms() - 1);
+    const auto temperature = 2.0 * Ekin_total / degrees_of_freedom;
+
+    return temperature;
+}
+
+static double calc_system_potential_energy(const System& system,
+                                           const ForceField& ff)
+{
+    double Epot = 0.0;
+
+    for (const auto& list : system.cell_lists)
+    {
+        const auto& xs = list.xs;
+
+        for (unsigned i = 0; i < list.num_atoms(); ++i)
+        {
+            for (unsigned j = i + 1; j < list.num_atoms(); ++j)
+            {
+                const auto dr2 =
+                    std::pow(xs[i * NDIM + XX] - xs[j * NDIM + XX], 2)
+                    + std::pow(xs[i * NDIM + YY] - xs[j * NDIM + YY], 2)
+                    + std::pow(xs[i * NDIM + ZZ] - xs[j * NDIM + ZZ], 2);
+
+                if (dr2 <= ff.rcut2)
+                {
+                    const auto dr6inv = 1.0 / std::pow(dr2, 3);
+                    const auto dr12inv = std::pow(dr6inv, 2);
+                    Epot += 4.0 * (dr12inv - dr6inv);
+                }
+            }
+        }
+
+        for (const auto& to_index : list.to_neighbours)
+        {
+            const auto& to_list = system.cell_lists.at(to_index);
+            const auto& to_xs = to_list.xs;
+            const auto dr_box = rvec_sub(to_list.origin, list.origin);
+
+            for (unsigned i = 0; i < list.num_atoms(); ++i)
+            {
+                for (unsigned j = 0; j < to_list.num_atoms(); ++j)
+                {
+                    const auto dr2 =
+                        std::pow(xs[i * NDIM + XX]
+                            - to_xs[j * NDIM + XX]
+                            - dr_box[XX], 2)
+                        + std::pow(xs[i * NDIM + YY]
+                            - to_xs[j * NDIM + YY]
+                            - dr_box[YY], 2)
+                        + std::pow(xs[i * NDIM + ZZ]
+                            - to_xs[j * NDIM + ZZ]
+                            - dr_box[ZZ], 2);
+
+                    if (dr2 <= ff.rcut2)
+                    {
+                        const auto dr6inv = 1.0 / std::pow(dr2, 3);
+                        const auto dr12inv = std::pow(dr6inv, 2);
+
+                        Epot += 4.0 * (dr12inv - dr6inv);
+                    }
+                }
+            }
+        }
+    }
+
+    return Epot;
+}
+
+void calculate_system_energetics(Energetics& energy,
+                                 const System& system,
+                                 const ForceField& ff)
+{
+    energy.potential.push_back(calc_system_potential_energy(system, ff));
+    energy.temperature.push_back(calc_system_temperature(system));
 }
