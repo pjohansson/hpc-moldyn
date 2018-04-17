@@ -25,12 +25,14 @@ struct ForceField {
 };
 
 struct Options {
-    constexpr Options(const double dt)
+    constexpr Options(const double dt, const unsigned energy_calc)
     :dt { dt },
-     dt2 { dt * dt }
+     dt2 { dt * dt },
+     energy_calc { energy_calc }
     {}
 
     double dt, dt2;
+    unsigned energy_calc;
 };
 
 // Argon force field
@@ -45,6 +47,6 @@ constexpr ForceField ArgonFF = ForceField(
 constexpr auto DefaultFF = ArgonFF;
 
 // For argon: 1e-3 ~ 2 fs time step
-constexpr Options DefaultOpts = Options(1e-3);
+constexpr Options DefaultOpts = Options(1e-3, 500);
 
 #endif // SIMULATION_PARAMETERS_H

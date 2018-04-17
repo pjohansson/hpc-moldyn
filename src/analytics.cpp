@@ -105,7 +105,7 @@ void Benchmark::stop_velocity_update(void)
     velocity_update += std::chrono::system_clock::now() - velocity_start;
 }
 
-namespace bench_print_params {
+namespace bench_lines {
     constexpr size_t name_length = 30;
     constexpr size_t time_length = 10;
     constexpr size_t perc_length = 8;
@@ -116,7 +116,6 @@ namespace bench_print_params {
 }
 
 using namespace std::chrono;
-using namespace bench_print_params;
 
 static double calc_percentage(const duration<double> time,
                               const duration<double> total)
@@ -137,6 +136,7 @@ static void print_a_timing(const std::string name,
                            const duration<double> time,
                            const duration<double> total)
 {
+    using namespace bench_lines;
     const auto sep = std::string(sep_length, ' ');
 
     std::cerr
@@ -151,6 +151,7 @@ static void print_a_timing(const std::string name,
 
 void print_benchmark(const Benchmark& bench)
 {
+    using namespace bench_lines;
     const auto linebreaker = std::string(line_length, '-') + '\n';
 
     std::cerr << std::setw(name_length)
@@ -272,4 +273,45 @@ void calculate_system_energetics(Energetics& energy,
 {
     energy.potential.push_back(calc_system_potential_energy(system, ff));
     energy.temperature.push_back(calc_system_temperature(system));
+}
+
+namespace energy_lines {
+    constexpr size_t name_length = 22;
+    constexpr size_t mean_length = 10;
+    constexpr size_t stdev_length = 10;
+    constexpr size_t unit_length = 4;
+
+    constexpr size_t sep_length = 2;
+    constexpr size_t line_length = name_length + mean_length + stdev_length
+        + unit_length + 3 * sep_length;
+}
+
+static void print_an_energy(const std::string name,
+                            const double mean,
+                            const double stdev,
+                            const std::string unit)
+{
+    using namespace energy_lines;
+    std::cerr << std::setw(name_length)
+        << std::left << name << std::right
+        << std::setw(mean_length + sep_length) << mean
+        << std::setw(stdev_length + sep_length) << stdev
+        << std::setw(unit_length + sep_length) << unit << '\n';
+}
+
+void print_energetics(const Energetics& energy)
+{
+    using namespace energy_lines;
+    const auto linebreaker = std::string(line_length, '-') + '\n';
+
+    std::cerr << std::setw(name_length)
+        << std::left << "Simulation Energetics" << std::right
+        << std::setw(mean_length + sep_length) << "Mean"
+        << std::setw(stdev_length + sep_length) << "Std. Dev."
+        << std::setw(unit_length + sep_length) << "Unit" << '\n'
+        << linebreaker;
+
+    // TODO: Calculate statistics and convert to SI
+    print_an_energy("Potential Energy", 5.0, 2.0, "J");
+    print_an_energy("Temperature", 10.0, 1.0, "K");
 }

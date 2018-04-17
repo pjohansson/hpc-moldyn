@@ -31,8 +31,9 @@ static bool read_cli_arguments(InputArgs& input_args,
 
     input_args.input_conf = static_cast<std::string>(argv[CONF]);
     input_args.output_conf = static_cast<std::string>(argv[OUTPUT]);
-    input_args.num_steps = static_cast<uint64_t>(std::strtoull(argv[NSTEPS],
-                                                               nullptr, 10));
+    input_args.num_steps = static_cast<uint64_t>(
+        std::strtoull(argv[NSTEPS], nullptr, 10)
+    );
 
     return true;
 }
@@ -70,6 +71,7 @@ int main(const int argc, const char* argv[])
     std::cerr << '\n';
 
     Benchmark benchmark;
+    Energetics energy;
 
     std::cerr << "Simulating " << input_args.num_steps << " steps:\n";
 
@@ -81,6 +83,11 @@ int main(const int argc, const char* argv[])
         }
 
         run_velocity_verlet(system, benchmark, DefaultFF, DefaultOpts);
+
+        if ((step % DefaultOpts.energy_calc) == 0)
+        {
+            calculate_system_energetics(energy, system, DefaultFF);
+        }
     }
 
     benchmark.finalize();
@@ -94,6 +101,8 @@ int main(const int argc, const char* argv[])
     write_conf_to_grofile(system, input_args.output_conf, DefaultFF.sigma);
     std::cerr << "done.\n";
 
+    std::cerr << '\n';
+    print_energetics(energy);
     std::cerr << '\n';
     print_benchmark(benchmark);
 

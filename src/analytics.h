@@ -48,19 +48,30 @@ private:
                                                total_start;
 };
 
-// Keep track of the energetics of the system during a simulation.
+// Keep track of the non-dimensional energetics of the system during
+// a simulation.
 struct Energetics {
     std::vector<double> potential,
                         temperature;
 };
 
+// Describe the system.
 void describe_system_config(const System& system);
+
+// Show the cell list distribution.
 void show_atom_cell_list_distribution(const System& system);
+
+// Print the benchmark data to stdout.
 void print_benchmark(const Benchmark& bench);
+
+// Calculate the energetics of the system and append to the object vectors.
 void calculate_system_energetics(Energetics& energetics,
                                  const System& system,
                                  const ForceField& ff);
-                                 
+
+void print_energetics(const Energetics& energy);
+
+// Calculate the non-dimensional system temperature.
 double calc_system_temperature(const System& system);
 
 #endif // ANALYTICS_H
