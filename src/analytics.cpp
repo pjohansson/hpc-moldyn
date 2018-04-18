@@ -286,6 +286,46 @@ namespace energy_lines {
         + unit_length + 3 * sep_length;
 }
 
+// The arithmetic mean of the values in a vector.
+template <typename T>
+static double calc_mean(const std::vector<T>& values)
+{
+    if (values.empty())
+    {
+        return 0.0;
+    }
+
+    const auto sum = std::accumulate(values.cbegin(), values.cend(), 0.0);
+
+    return static_cast<double>(sum) / static_cast<double>(values.size());
+}
+
+// The standard deviation of values in a vector.
+template <typename T>
+static double calc_stdev(const std::vector<T>& values, const double mean)
+{
+    const auto len = values.size();
+
+    if (len <= 1)
+    {
+        return 0.0;
+    }
+
+    const auto sum_sq = std::accumulate(
+        values.cbegin(),
+        values.cend(),
+        0.0,
+        [mean](const double acc, const T value)
+        {
+            return acc + std::pow(static_cast<double>(value) - mean, 2);
+        }
+    );
+
+    return std::sqrt(
+        sum_sq / static_cast<double>(len - 1)
+    );
+}
+
 static void print_an_energy(const std::string name,
                             const double mean,
                             const double stdev,
@@ -299,7 +339,17 @@ static void print_an_energy(const std::string name,
         << std::setw(unit_length + sep_length) << unit << '\n';
 }
 
-void print_energetics(const Energetics& energy)
+static double convert_energy_to_SI(const double E, const ForceField& ff)
+{
+    return ff.epsilon * E;
+}
+
+static double convert_temp_to_SI(const double T, const ForceField& ff)
+{
+    return (ff.epsilon / BOLTZ) * T;
+}
+
+void print_energetics(const Energetics& energy, const ForceField& ff)
 {
     using namespace energy_lines;
     const auto linebreaker = std::string(line_length, '-') + '\n';
@@ -312,6 +362,21 @@ void print_energetics(const Energetics& energy)
         << linebreaker;
 
     // TODO: Calculate statistics and convert to SI
-    print_an_energy("Potential Energy", 5.0, 2.0, "J");
-    print_an_energy("Temperature", 10.0, 1.0, "K");
+    const auto mean_Epot = calc_mean(energy.potential);
+    const auto stdev_Epot = calc_stdev(energy.potential, mean_Epot);
+    print_an_energy(
+        "Potential Energy",
+        convert_energy_to_SI(mean_Epot, ff),
+        convert_energy_to_SI(stdev_Epot, ff),
+        "J"
+    );
+
+    const auto mean_T = calc_mean(energy.temperature);
+    const auto stdev_T = calc_stdev(energy.temperature, mean_T);
+    print_an_energy(
+        "Temperature",
+        convert_temp_to_SI(mean_T, ff),
+        convert_temp_to_SI(stdev_T, ff),
+        "K"
+    );
 }

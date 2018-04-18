@@ -102,7 +102,7 @@ int main(const int argc, const char* argv[])
     std::cerr << "done.\n";
 
     std::cerr << '\n';
-    print_energetics(energy);
+    print_energetics(energy, DefaultFF);
     std::cerr << '\n';
     print_benchmark(benchmark);
 

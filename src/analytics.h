@@ -69,7 +69,7 @@ void calculate_system_energetics(Energetics& energetics,
                                  const System& system,
                                  const ForceField& ff);
 
-void print_energetics(const Energetics& energy);
+void print_energetics(const Energetics& energy, const ForceField& ff);
 
 // Calculate the non-dimensional system temperature.
 double calc_system_temperature(const System& system);

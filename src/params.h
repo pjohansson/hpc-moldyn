@@ -5,6 +5,8 @@
 #ifndef SIMULATION_PARAMETERS_H
 #define SIMULATION_PARAMETERS_H
 
+constexpr double BOLTZ = 1.38064852e-23; // [J/K]
+
 struct ForceField {
     constexpr ForceField(const real epsilon,
                          const real sigma,
@@ -47,6 +49,6 @@ constexpr ForceField ArgonFF = ForceField(
 constexpr auto DefaultFF = ArgonFF;
 
 // For argon: 1e-3 ~ 2 fs time step
-constexpr Options DefaultOpts = Options(1e-3, 500);
+constexpr Options DefaultOpts = Options(1e-3, 50);
 
 #endif // SIMULATION_PARAMETERS_H

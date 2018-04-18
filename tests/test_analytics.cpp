@@ -5,6 +5,8 @@
 #include "src/integrator.cpp"
 #include "src/params.h"
 
+#include <vector>
+
 using namespace std;
 
 constexpr ForceField TestFF (
@@ -106,8 +108,70 @@ ADD_TEST(test_calc_energetics_in_multi_cell_system,
         "potential energy not calculated correctly in divided system");
 )
 
+ADD_TEST(test_calc_mean_of_vector_values_works,
+    const vector<double> values_d {0.0, 1.0, 2.0, 3.0};
+    ASSERT_EQ(calc_mean(values_d), 1.5,
+        "the mean is not calculated correctly for doubles");
+
+    const vector<float> values_f {0.0, 1.0, 2.0, 3.0};
+    ASSERT_EQ(static_cast<float>(calc_mean(values_f)), 1.5,
+        "the mean is not calculated correctly for floats");
+
+    const vector<int> values_i {0, 1, 2, 3};
+    ASSERT_EQ(static_cast<double>(calc_mean(values_i)), 1.5,
+        "the mean is not calculated correctly for ints");
+
+    const vector<double> values_empty;
+    ASSERT_EQ(calc_mean(values_empty), 0.0,
+        "the mean of an empty vector is not zero");
+)
+
+ADD_TEST(test_calc_standard_deviation_of_vector_values_works,
+    const vector<double> values_d {0.0, 1.0, 2.0, 3.0};
+    const auto mean = calc_mean(values_d);
+
+    const auto sum_sq =
+        pow(0 - mean, 2)
+        + pow(1.0 - mean, 2)
+        + pow(2.0 - mean, 2)
+        + pow(3.0 - mean, 2);
+
+    const auto stdev = sqrt(sum_sq / 3.0);
+
+    ASSERT_EQ(calc_stdev(values_d, mean), stdev,
+        "standard deviation is not calculated correctly");
+
+    const vector<int> values_i {0, 1, 2, 3};
+    ASSERT_EQ(calc_stdev(values_i, mean), stdev,
+        "standard deviation is not calculated correctly for ints");
+)
+
+ADD_TEST(test_calc_standard_deviation_returns_zero_for_short_vector,
+    const vector<double> one {5.0};
+    ASSERT_EQ(calc_stdev(one, 0.0), 0.0,
+        "calculating with a one-vector length does not return 0");
+
+    const vector<double> zero;
+    ASSERT_EQ(calc_stdev(zero, 0.0), 0.0,
+        "calculating with a zero-vector length does not return 0");
+)
+
+ADD_TEST(test_converting_energetics_using_forcefield,
+    constexpr auto T = 12.0;
+    ASSERT_EQ(convert_temp_to_SI(T, TestFF), T * TestFF.epsilon / BOLTZ,
+        "the temperature is not converted correctly");
+
+    constexpr auto E = 8.0;
+    ASSERT_EQ(convert_energy_to_SI(E, TestFF), E * TestFF.epsilon,
+        "the energy is not converted correctly");
+)
+
 RUN_TESTS(
     test_calc_temperature_using_equipartition_theorem_in_single_cell();
     test_calc_potential_energy_in_single_cell_system();
     test_calc_energetics_in_multi_cell_system();
+    test_calc_mean_of_vector_values_works();
+    test_calc_standard_deviation_of_vector_values_works();
+    test_calc_standard_deviation_returns_zero_for_short_vector();
+    test_converting_energetics_using_forcefield();
 )
