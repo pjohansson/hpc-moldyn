@@ -83,10 +83,12 @@ int main(const int argc, const char* argv[])
     std::cerr << "Simulating " << input_args.num_steps << " steps:\n";
 
     // [WIP] trajectory output
+    benchmark.start_traj_output_update();
     std::string fntraj { "traj.gro" };
     {
         std::ofstream reset { fntraj, std::ios::out | std::ios::trunc };
     }
+    benchmark.stop_traj_output_update();
 
     for (unsigned step = 0; step < input_args.num_steps; ++step)
     {
@@ -97,16 +99,20 @@ int main(const int argc, const char* argv[])
 
         run_velocity_verlet(system, benchmark, ff, DefaultOpts);
 
+        benchmark.start_energy_calc_update();
         if (step != 0 && (step % DefaultOpts.energy_calc) == 0)
         {
             calculate_system_energetics(energy, system, ff);
         }
+        benchmark.stop_energy_calc_update();
 
         // [WIP] trajectory output
+        benchmark.start_traj_output_update();
         if (step != 0 && (step % 20 == 0))
         {
             write_conf_to_grofile(system, fntraj, ff.sigma, OutputMode::Append);
         }
+        benchmark.stop_traj_output_update();
     }
 
     benchmark.finalize();

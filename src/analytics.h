@@ -12,8 +12,11 @@ public:
     Benchmark(void)
     :cell_list_update { 0.0 },
      force_update { 0.0 },
+     force_wall_update { 0.0 },
      position_update { 0.0 },
      velocity_update { 0.0 },
+     energy_calc_update { 0.0 },
+     traj_output_update { 0.0 },
      simulation_total { 0.0 },
      total_start { std::chrono::system_clock::now() } {}
 
@@ -23,28 +26,40 @@ public:
     // Start timers
     void start_cell_list_update(void);
     void start_force_update(void);
+    void start_force_wall_update(void);
     void start_position_update(void);
     void start_velocity_update(void);
+    void start_energy_calc_update(void);
+    void start_traj_output_update(void);
 
     // Stop timers and add the duration from the start to the total.
     void stop_cell_list_update(void);
     void stop_force_update(void);
+    void stop_force_wall_update(void);
     void stop_position_update(void);
     void stop_velocity_update(void);
+    void stop_energy_calc_update(void);
+    void stop_traj_output_update(void);
 
     // Total time spent in different tasks.
     std::chrono::duration<double> cell_list_update,
                                   force_update,
+                                  force_wall_update,
                                   position_update,
                                   velocity_update,
+                                  energy_calc_update,
+                                  traj_output_update,
                                   simulation_total,
                                   rest;
 
 private:
     decltype(std::chrono::system_clock::now()) cell_list_start,
                                                force_start,
+                                               force_wall_start,
                                                position_start,
                                                velocity_start,
+                                               energy_calc_start,
+                                               traj_output_start,
                                                total_start;
 };
 

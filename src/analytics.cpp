@@ -61,8 +61,10 @@ void show_atom_cell_list_distribution(const System& system)
 void Benchmark::finalize(void)
 {
     simulation_total = std::chrono::system_clock::now() - total_start;
-    rest = simulation_total - cell_list_update - force_update
-        - position_update - velocity_update;
+    rest = simulation_total - cell_list_update
+        - force_update - force_wall_update
+        - position_update - velocity_update
+        - energy_calc_update - traj_output_update;
 }
 
 void Benchmark::start_cell_list_update(void)
@@ -75,6 +77,11 @@ void Benchmark::start_force_update(void)
     force_start = std::chrono::system_clock::now();
 }
 
+void Benchmark::start_force_wall_update(void)
+{
+    force_wall_start = std::chrono::system_clock::now();
+}
+
 void Benchmark::start_position_update(void)
 {
     position_start = std::chrono::system_clock::now();
@@ -83,6 +90,16 @@ void Benchmark::start_position_update(void)
 void Benchmark::start_velocity_update(void)
 {
     velocity_start = std::chrono::system_clock::now();
+}
+
+void Benchmark::start_energy_calc_update(void)
+{
+    energy_calc_start = std::chrono::system_clock::now();
+}
+
+void Benchmark::start_traj_output_update(void)
+{
+    traj_output_start = std::chrono::system_clock::now();
 }
 
 void Benchmark::stop_cell_list_update(void)
@@ -95,6 +112,11 @@ void Benchmark::stop_force_update(void)
     force_update += std::chrono::system_clock::now() - force_start;
 }
 
+void Benchmark::stop_force_wall_update(void)
+{
+    force_wall_update += std::chrono::system_clock::now() - force_wall_start;
+}
+
 void Benchmark::stop_position_update(void)
 {
     position_update += std::chrono::system_clock::now() - position_start;
@@ -103,6 +125,16 @@ void Benchmark::stop_position_update(void)
 void Benchmark::stop_velocity_update(void)
 {
     velocity_update += std::chrono::system_clock::now() - velocity_start;
+}
+
+void Benchmark::stop_energy_calc_update(void)
+{
+    energy_calc_update += std::chrono::system_clock::now() - energy_calc_start;
+}
+
+void Benchmark::stop_traj_output_update(void)
+{
+    traj_output_update += std::chrono::system_clock::now() - traj_output_start;
 }
 
 namespace bench_lines {
@@ -164,10 +196,16 @@ void print_benchmark(const Benchmark& bench)
                    bench.cell_list_update, bench.simulation_total);
     print_a_timing("Force calculation",
                    bench.force_update, bench.simulation_total);
+    print_a_timing("Force wall calculation",
+                   bench.force_wall_update, bench.simulation_total);
     print_a_timing("Position update",
                    bench.position_update, bench.simulation_total);
     print_a_timing("Velocity update",
                    bench.velocity_update, bench.simulation_total);
+    print_a_timing("Energy calc",
+                   bench.energy_calc_update, bench.simulation_total);
+    print_a_timing("Trajectory writing",
+                   bench.traj_output_update, bench.simulation_total);
     print_a_timing("Rest",
                    bench.rest, bench.simulation_total);
 

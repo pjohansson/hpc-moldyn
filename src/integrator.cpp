@@ -254,7 +254,9 @@ void run_velocity_verlet(System& system,
     }
     bench.stop_force_update();
 
+    bench.start_force_wall_update();
     calc_wall_forces(system, ff);
+    bench.stop_force_wall_update();
 
     bench.start_velocity_update();
     for (auto& list : system.cell_lists)
