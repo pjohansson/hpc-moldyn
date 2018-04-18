@@ -16,7 +16,7 @@ constexpr ForceField TestFF (
     2.0  // mass
 );
 
-constexpr Options TestOpts { 5e-3 };
+constexpr Options TestOpts { 5e-3, 100 };
 
 ADD_TEST(test_calc_force,
     CellList list (2, RVec {0.0, 0.0, 0.0}, RVec{1.0, 1.0, 1.0});

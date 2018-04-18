@@ -128,6 +128,6 @@ void update_cell_lists(System& system);
 
 // Generate velocities for all atoms in the system around an input reference
 // temperature.
-void gen_system_velocities(System& system, const real Tref)
+void gen_system_velocities(System& system, const real Tref);
 
 #endif // SYSTEM_CONF_H
