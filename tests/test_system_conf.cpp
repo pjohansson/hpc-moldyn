@@ -522,6 +522,20 @@ ADD_TEST(test_generate_velocities_at_temperature_gets_close,
 
     ASSERT(static_cast<bool>(Tdiff_rel < 0.01),
         "system velocities are not initialized to the correct temperature");
+
+    // The system's mean velocity should be small compared
+    // to the thermal velocity
+    const auto mean_velocity = calc_mean_velocity(system);
+    const auto thermal_velocity = sqrt(Tref);
+
+    cerr << mean_velocity[XX] << ' ' << mean_velocity[YY] << ' ' << mean_velocity[ZZ] << '\n';
+
+    ASSERT(static_cast<bool>(mean_velocity[XX] < 0.01 * thermal_velocity),
+        "velocities not generated around 0 for the temperature");
+    ASSERT(static_cast<bool>(mean_velocity[YY] < 0.01 * thermal_velocity),
+        "velocities not generated around 0 for the temperature");
+    ASSERT(static_cast<bool>(mean_velocity[ZZ] < 0.01 * thermal_velocity),
+        "velocities not generated around 0 for the temperature");
 )
 
 RUN_TESTS(

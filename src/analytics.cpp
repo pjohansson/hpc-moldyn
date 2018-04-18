@@ -178,24 +178,45 @@ void print_benchmark(const Benchmark& bench)
         << calc_seconds(bench.simulation_total) << '\n';
 }
 
+RVec calc_mean_velocity(const System& system)
+{
+    RVec mean {0.0, 0.0, 0.0};
+
+    for (const auto& list : system.cell_lists)
+    {
+        for (unsigned i = 0; i < list.num_atoms(); ++i)
+        {
+            mean[XX] += list.vs[i * NDIM + XX];
+            mean[YY] += list.vs[i * NDIM + YY];
+            mean[ZZ] += list.vs[i * NDIM + ZZ];
+        }
+    }
+
+    for (unsigned k = 0; k < NDIM; ++k)
+    {
+        mean[k] /= system.num_atoms();
+    }
+
+    return mean;
+}
+
 double calc_system_temperature(const System& system)
 {
     double Ekin_total = 0.0;
+    const auto mean_velocity = calc_mean_velocity(system);
 
     for (const auto& cell : system.cell_lists)
     {
-        // Use a simple fold with a lambda expression to square all velocities
-        // independently, since we only have one mass.
-        const auto Ekin = std::accumulate(
-            cell.vs.cbegin(),
-            cell.vs.cend(),
-            0.0,
-            [](const real acc, const real value) {
-                return acc + std::pow(value, 2);
+        // Subtract the mean velocity from each value.
+        for (unsigned i = 0; i < cell.num_atoms(); ++i)
+        {
+            for (unsigned k = 0; k < NDIM; ++k)
+            {
+                Ekin_total += 0.5 * std::pow(
+                    cell.vs[i * NDIM + k] - mean_velocity[k], 2
+                );
             }
-        );
-
-        Ekin_total += 0.5 * Ekin;
+        }
     }
 
     const auto degrees_of_freedom = NDIM * (system.num_atoms() - 1);

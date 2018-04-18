@@ -25,6 +25,7 @@ System get_system()
     list.add_atom(0.9, 1.0, 1.1);
     list.add_atom(1.9, 1.9, 1.9);
 
+    // mean_vx: 3.0, mean_vy: 4.0, mean_vz: 5.0
     const vector<double> velocities = {
         0.0, 1.0, 2.0,
         3.0, 4.0, 5.0,
@@ -43,12 +44,31 @@ System get_system()
 
 ADD_TEST(test_calc_temperature_using_equipartition_theorem_in_single_cell,
     const auto system = get_system();
+    const auto mean_vx = 3.0;
+    const auto mean_vy = 4.0;
+    const auto mean_vz = 5.0;
 
+    // The kinetic energy in a frame moving with the system
     const auto Ekin =
-          0.5 * (0.0 * 0.0 + 1.0 * 1.0 + 2.0 * 2.0)
-        + 0.5 * (3.0 * 3.0 + 4.0 * 4.0 + 5.0 * 5.0)
-        + 0.5 * (6.0 * 6.0 + 7.0 * 7.0 + 8.0 * 8.0);
-    const double N_dof = NDIM * 2.0; // One particle (free from some relative particle)
+          0.5 * (
+            pow(0.0 - mean_vx, 2)
+            + pow(1.0 - mean_vy, 2)
+            + pow(2.0 - mean_vz, 2)
+        )
+        + 0.5 * (
+            pow(3.0 - mean_vx, 2)
+            + pow(4.0 - mean_vy, 2)
+            + pow(5.0 - mean_vz, 2)
+        )
+        + 0.5 * (
+            pow(6.0 - mean_vx, 2)
+            + pow(7.0 - mean_vy, 2)
+            + pow(8.0 - mean_vz, 2)
+        );
+        //   0.5 * (0.0 * 0.0 + 1.0 * 1.0 + 2.0 * 2.0)
+        // + 0.5 * (3.0 * 3.0 + 4.0 * 4.0 + 5.0 * 5.0)
+        // + 0.5 * (6.0 * 6.0 + 7.0 * 7.0 + 8.0 * 8.0);
+    const double N_dof = NDIM * 2.0; // Two particles (free from some relative particle)
     const auto temp = 2 * Ekin / N_dof;
 
     Energetics energy;
@@ -62,6 +82,15 @@ ADD_TEST(test_calc_temperature_using_equipartition_theorem_in_single_cell,
 
     ASSERT_EQ(energy.temperature.back(), temp,
         "temperature not calculated correctly");
+)
+
+ADD_TEST(test_calc_mean_velocity_of_system,
+    const auto system = get_system();
+    const auto mean_velocity = calc_mean_velocity(system);
+
+    ASSERT_EQ(mean_velocity[XX], 3.0, "incorrect mean velocity along x");
+    ASSERT_EQ(mean_velocity[YY], 4.0, "incorrect mean velocity along y");
+    ASSERT_EQ(mean_velocity[ZZ], 5.0, "incorrect mean velocity along z");
 )
 
 ADD_TEST(test_calc_potential_energy_in_single_cell_system,
@@ -172,6 +201,7 @@ RUN_TESTS(
     test_calc_potential_energy_in_single_cell_system();
     test_calc_energetics_in_multi_cell_system();
     test_calc_mean_of_vector_values_works();
+    test_calc_mean_velocity_of_system();
     test_calc_standard_deviation_of_vector_values_works();
     test_calc_standard_deviation_returns_zero_for_short_vector();
     test_converting_energetics_using_forcefield();

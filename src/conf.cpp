@@ -425,6 +425,19 @@ void gen_system_velocities(System& system, const real Tref)
         }
     }
 
+    const auto mean_velocity = calc_mean_velocity(system);
+
+    for (auto& list : system.cell_lists)
+    {
+        for (unsigned i = 0; i < list.num_atoms(); ++i)
+        {
+            for (unsigned k = 0; k < NDIM; ++k)
+            {
+                list.vs[i * NDIM + k] -= mean_velocity[k];
+            }
+        }
+    }
+
     const auto Tscale = sqrt(Tref / calc_system_temperature(system));
 
     for (auto& list : system.cell_lists)

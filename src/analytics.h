@@ -71,6 +71,9 @@ void calculate_system_energetics(Energetics& energetics,
 
 void print_energetics(const Energetics& energy, const ForceField& ff);
 
+// Calculate the mean velocity of the system.
+RVec calc_mean_velocity(const System& system);
+
 // Calculate the non-dimensional system temperature.
 double calc_system_temperature(const System& system);
 

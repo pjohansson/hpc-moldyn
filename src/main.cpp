@@ -83,10 +83,10 @@ int main(const int argc, const char* argv[])
     std::cerr << "Simulating " << input_args.num_steps << " steps:\n";
 
     // [WIP] trajectory output
-    // std::string fntraj { "traj.gro" };
-    // {
-    //     std::ofstream reset { fntraj, std::ios::out | std::ios::trunc };
-    // }
+    std::string fntraj { "traj.gro" };
+    {
+        std::ofstream reset { fntraj, std::ios::out | std::ios::trunc };
+    }
 
     for (unsigned step = 0; step < input_args.num_steps; ++step)
     {
@@ -103,10 +103,10 @@ int main(const int argc, const char* argv[])
         }
 
         // [WIP] trajectory output
-        // if (step != 0 && (step % 20 == 0))
-        // {
-        //     write_conf_to_grofile(system, fntraj, ff.sigma, OutputMode::Append);
-        // }
+        if (step != 0 && (step % 20 == 0))
+        {
+            write_conf_to_grofile(system, fntraj, ff.sigma, OutputMode::Append);
+        }
     }
 
     benchmark.finalize();
