@@ -12,6 +12,7 @@ static RVec calc_shift_between_cells(const CellList& from_list, const CellList& 
 }
 
 // Calculate the distance between to atoms of input indices in a cell list.
+// The direction is: r = r_to - r_from
 static dRVec calc_distance(const std::vector<real>& xs,
                            const size_t             from,
                            const size_t             to)
@@ -59,7 +60,8 @@ static RVec calc_force_between_atoms(const dRVec&      dr,
         const auto dr8inv = std::pow(dr2inv, 4);
         const auto dr14inv = std::pow(dr2inv, 7);
 
-        const auto force = 48.0 * (dr14inv - 0.5 * dr8inv);
+        // Negative since the dr calculation should be from -> to
+        const auto force = -48.0 * (dr14inv - 0.5 * dr8inv);
 
         for (int k = 0; k < NDIM; ++k)
         {
@@ -129,6 +131,64 @@ static void calc_forces_cell_to_cell(CellList& from_list,
     }
 }
 
+// Calculate the wall force inside a single cell.
+static void calc_wall_forces_in_list(CellList& list,
+                                     const RVec system_size,
+                                     const double wall_constant)
+{
+    const auto x0 = list.origin[XX];
+    const auto y0 = list.origin[YY];
+    const auto z0 = list.origin[ZZ];
+
+    const auto xmax = system_size[XX];
+    const auto ymax = system_size[YY];
+    const auto zmax = system_size[ZZ];
+
+    for (unsigned i = 0; i < list.num_atoms(); ++i)
+    {
+        const auto x = list.xs[i * NDIM + XX] + x0;
+        const auto y = list.xs[i * NDIM + YY] + y0;
+        const auto z = list.xs[i * NDIM + ZZ] + z0;
+
+        if (x < 0.0)
+        {
+            list.fs[i * NDIM + XX] -= wall_constant * x;
+        }
+        else if (x > xmax)
+        {
+            list.fs[i * NDIM + XX] -= wall_constant * (x - xmax);
+        }
+
+        if (y < 0.0)
+        {
+            list.fs[i * NDIM + YY] -= wall_constant * y;
+        }
+        else if (y > ymax)
+        {
+            list.fs[i * NDIM + YY] -= wall_constant * (y - ymax);
+        }
+
+        if (z < 0.0)
+        {
+            list.fs[i * NDIM + ZZ] -= wall_constant * z;
+        }
+        else if (z > zmax)
+        {
+            list.fs[i * NDIM + ZZ] -= wall_constant * (z - zmax);
+        }
+    }
+}
+
+// Add forces from a potential wall that restrains particles
+// to stay inside the system.
+static void calc_wall_forces(System& system, const ForceField& ff)
+{
+    for (auto& list : system.cell_lists)
+    {
+        calc_wall_forces_in_list(list, system.box_size, ff.wall_constant);
+    }
+}
+
 // Update all the positions inside a cell list using the Velocity Verlet
 // integration scheme.
 static void update_positions_cell(CellList& list,
@@ -193,6 +253,8 @@ void run_velocity_verlet(System& system,
         }
     }
     bench.stop_force_update();
+
+    calc_wall_forces(system, ff);
 
     bench.start_velocity_update();
     for (auto& list : system.cell_lists)

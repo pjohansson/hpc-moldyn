@@ -155,7 +155,7 @@ ADD_TEST(test_system_write_grofile,
     output.cell_lists.push_back(list1);
     output.cell_lists.push_back(list2);
 
-    write_conf_to_grofile(output, path, sigma);
+    write_conf_to_grofile(output, path, sigma, OutputMode::Replace);
     const auto system = read_conf_from_grofile(path, sigma);
 
     ASSERT_EQ(system.title, title, "title was not written correctly");

@@ -11,19 +11,22 @@ struct ForceField {
     constexpr ForceField(const real epsilon,
                          const real sigma,
                          const real rcut,
-                         const real mass)
+                         const real mass,
+                         const real wall_constant)
     :epsilon { epsilon },
      sigma { sigma },
      mass { mass },
      rcut { rcut },
-     rcut2 { std::pow(rcut, 2) }
+     rcut2 { std::pow(rcut, 2) },
+     wall_constant { wall_constant }
     {}
 
     real epsilon,
          sigma,
          mass,
          rcut,
-         rcut2;
+         rcut2,
+         wall_constant;
 };
 
 struct Options {
@@ -42,13 +45,11 @@ constexpr ForceField ArgonFF = ForceField(
     1.654e-21, // epsilon [J]
     0.340,  // sigma [nm]
     3.0, // rcut = 3 * sigma (non-dimensional)
-    39.948 // molecular mass (u)
+    39.948, // molecular mass (u),
+    300000.0 // [epsilon] (non-dimensional)
 );
 
-// Default force field is argon!
-constexpr auto DefaultFF = ArgonFF;
-
 // For argon: 1e-3 ~ 2 fs time step
-constexpr Options DefaultOpts = Options(1e-3, 50);
+constexpr Options DefaultOpts = Options(1e-3, 5);
 
 #endif // SIMULATION_PARAMETERS_H

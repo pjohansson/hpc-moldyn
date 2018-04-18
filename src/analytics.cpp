@@ -5,18 +5,18 @@
 
 #include "analytics.h"
 
-void describe_system_config(const System& system)
+void describe_system_config(const System& system, const ForceField& ff)
 {
     std::cerr << "System title: " << system.title << '\n'
               << "Size:  "
-                << system.box_size[XX] << " x "
-                << system.box_size[YY] << " x "
-                << system.box_size[ZZ] << " (nm^3)\n"
+                << system.box_size[XX] * ff.sigma << " x "
+                << system.box_size[YY] * ff.sigma << " x "
+                << system.box_size[ZZ] * ff.sigma << " (nm^3)\n"
               << "Number of atoms:  " << system.num_atoms() << '\n'
               << "Cell list size:  "
-                << system.cell_size[XX] << " x "
-                << system.cell_size[YY] << " x "
-                << system.cell_size[ZZ] << " (nm^3)\n"
+                << system.cell_size[XX] * ff.sigma << " x "
+                << system.cell_size[YY] * ff.sigma << " x "
+                << system.cell_size[ZZ] * ff.sigma << " (nm^3)\n"
               << "Cell list configuration:  "
                 << system.shape[XX] << " x "
                 << system.shape[YY] << " x "
@@ -361,7 +361,6 @@ void print_energetics(const Energetics& energy, const ForceField& ff)
         << std::setw(unit_length + sep_length) << "Unit" << '\n'
         << linebreaker;
 
-    // TODO: Calculate statistics and convert to SI
     const auto mean_Epot = calc_mean(energy.potential);
     const auto stdev_Epot = calc_stdev(energy.potential, mean_Epot);
     print_an_energy(

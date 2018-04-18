@@ -13,21 +13,30 @@ constexpr ForceField TestFF (
     1.0, // epsilon
     1.0, // sigma
     1.1, // rcut
-    2.0  // mass
+    2.0, // mass
+    5.0 // wall_constant
 );
 
 constexpr Options TestOpts { 5e-3, 100 };
 
 ADD_TEST(test_calc_force,
-    CellList list (2, RVec {0.0, 0.0, 0.0}, RVec{1.0, 1.0, 1.0});
+    constexpr ForceField TestFF_long_rcut (
+        1.0, // epsilon
+        1.0, // sigma
+        10.0, // rcut
+        2.0, // mass
+        5.0 // wall_constant
+    );
 
-    const auto dx = 0.5;
+    CellList list (2, RVec {0.0, 0.0, 0.0}, RVec{10.0, 1.0, 1.0});
+
+    const auto dx = 5.0;
     list.add_atom(0.0, 0.0, 0.0);
     list.add_atom(dx, 0.0, 0.0);
 
-    calc_forces_internal(list, TestFF);
+    calc_forces_internal(list, TestFF_long_rcut);
 
-    const auto force = 48.0 * dx
+    const auto force = -48.0 * dx
         * (1.0 / std::pow(dx, 14) - 0.5 / std::pow(dx, 8));
 
     const vector<double> expected {
@@ -75,7 +84,7 @@ ADD_TEST(test_calc_force_adds_total_force,
 
     calc_forces_internal(list, TestFF);
 
-    const auto force = 24.0;
+    const auto force = -24.0;
 
     const vector<double> expected {
         force, 0.0, 0.0,
@@ -97,13 +106,88 @@ ADD_TEST(test_calc_force_between_two_lists,
 
     calc_forces_cell_to_cell(list1, list2, TestFF);
 
-    const auto force = 24.0; // epsilon = 24, sigma = 1, dr = 1 (along x only)
+    const auto force = -24.0; // epsilon = 24, sigma = 1, dr = 1 (along x only)
 
     const vector<double> expected1 {force, 0.0, 0.0};
     const vector<double> expected2 {-force, 0.0, 0.0};
 
     ASSERT_EQ_VEC(list1.fs, expected1, "forces are not calculated correctly");
     ASSERT_EQ_VEC(list2.fs, expected2, "forces are not calculated correctly");
+)
+
+ADD_TEST(test_calc_force_internal_and_between_cells_consistency_check,
+    const RVec size {1.0, 1.0, 1.0};
+
+    CellList list1 (1, RVec {0.0, 0.0, 0.0}, size);
+    list1.add_atom(0.0, 0.0, 0.0);
+
+    CellList list2 (1, RVec {0.1, 0.2, 0.3}, size);
+    list2.add_atom(0.0, 0.0, 0.0);
+
+    calc_forces_cell_to_cell(list1, list2, TestFF);
+
+    CellList expect (2, RVec {0.0, 0.0, 0.0}, size);
+    expect.add_atom(0.0, 0.0, 0.0);
+    expect.add_atom(0.1, 0.2, 0.3);
+
+    calc_forces_internal(expect, TestFF);
+
+    ASSERT_EQ(expect.fs[0], list1.fs[0], "force calc 1 is not consistent");
+    ASSERT_EQ(expect.fs[1], list1.fs[1], "force calc 2 is not consistent");
+    ASSERT_EQ(expect.fs[2], list1.fs[2], "force calc 3 is not consistent");
+    ASSERT_EQ(expect.fs[3], list2.fs[0], "force calc 4 is not consistent");
+    ASSERT_EQ(expect.fs[4], list2.fs[1], "force calc 5 is not consistent");
+    ASSERT_EQ(expect.fs[5], list2.fs[2], "force calc 6 is not consistent");
+)
+
+ADD_TEST(test_calc_force_for_a_wall_if_outside_box,
+    const std::string title = "Test";
+    const RVec box_size {1.0, 1.0, 1.0};
+    const RVec cell_size {1.0, 1.0, 1.0};
+
+    auto system = System(title, box_size);
+    system.cell_size = cell_size;
+    system.shape = IVec {1, 1, 1};
+
+    // The list has two atoms outside the box (above/below the box)
+    // and one inside which should not be affected:
+    // the list is also translated by 0.5 along all directions, which
+    // has to be compensated for!
+    auto list = CellList(3, RVec {0.5, 0.5, 0.5}, cell_size);
+    list.add_atom(-1.5, -2.5, -3.5); // at (-1, -2, -3) in system coords
+    list.add_atom(1.5, 2.5, 3.5); // at (2, 3, 4) in system coords
+    list.add_atom(0.0, 0.0, 0.0); // at (0.5, 0.5, 0.5) in system coords
+
+    system.cell_lists.push_back(list);
+
+    // Calculate the initial forces (no internal interactions)
+    calc_wall_forces(system, TestFF);
+
+    const auto& forces = system.cell_lists[0].fs;
+
+    // Atom 1 should move in positive directions
+    ASSERT_EQ(forces[XX], TestFF.wall_constant * 1.0,
+        "the force of the first atom was not added correctly");
+    ASSERT_EQ(forces[YY], TestFF.wall_constant * 2.0,
+        "the force of the first atom was not added correctly");
+    ASSERT_EQ(forces[ZZ], TestFF.wall_constant * 3.0,
+        "the force of the first atom was not added correctly");
+
+    // Atom 2 should be reversed
+    ASSERT_EQ(forces[NDIM + XX], -TestFF.wall_constant * 1.0,
+        "the force of the second atom was not added correctly");
+    ASSERT_EQ(forces[NDIM + YY], -TestFF.wall_constant * 2.0,
+        "the force of the second atom was not added correctly");
+    ASSERT_EQ(forces[NDIM + ZZ], -TestFF.wall_constant * 3.0,
+        "the force of the second atom was not added correctly");
+
+    // Atom 3 should be unaffected
+    ASSERT_EQ(forces[2 * NDIM + XX], 0.0,
+        "the third atom was unexpectedly affected by the wall");
+    ASSERT_EQ(forces[2 * NDIM + YY], 0.0,
+        "the third atom was unexpectedly affected by the wall");
+    ASSERT_EQ(forces[2 * NDIM + ZZ], 0.0,
+        "the third atom was unexpectedly affected by the wall");
 )
 
 ADD_TEST(test_update_velocities,
@@ -202,10 +286,12 @@ ADD_TEST(test_velocity_verlet_step_single_list,
     update_positions_cell(list, TestFF, TestOpts);  // x1, v0, f0, _
     reset_forces_cell(list);                        // x1, v0,  _, f0
     calc_forces_internal(list, TestFF);            // x1, v0, f1, f0
+    calc_wall_forces_in_list(list, box_size, TestFF.wall_constant);
     update_velocities_cell(list, TestFF, TestOpts); // x1, v1, f1, f0
     update_positions_cell(list, TestFF, TestOpts);  // x2, v1, f1, f0
     reset_forces_cell(list);                        // x2, v1,  _, f1
     calc_forces_internal(list, TestFF);            // x2, v1, f2, f1
+    calc_wall_forces_in_list(list, box_size, TestFF.wall_constant);
     update_velocities_cell(list, TestFF, TestOpts); // x2, v2, f2, f1
 
     // With the function
@@ -317,15 +403,48 @@ ADD_TEST(test_velocity_verlet_step_list_with_no_neighbours_does_nothing,
         "the neighbours interacted even though they were not set as neighbours");
 )
 
+ADD_TEST(test_velocity_verlet_for_system_includes_wall_force_calc,
+    const std::string title = "Test";
+    const RVec box_size {1.0, 1.0, 1.0};
+    const RVec cell_size {1.0, 1.0, 1.0};
+
+    auto system = System(title, box_size);
+    system.cell_size = cell_size;
+    system.shape = IVec {1, 1, 1};
+
+    // The system has a single atom outside of it, for which a wall
+    // force will be added!
+    auto list = CellList(3, RVec {0.0, 0.0, 0.0}, cell_size);
+    list.add_atom(-1.0, -2.0, -3.0);
+
+    system.cell_lists.push_back(list);
+
+    // Calculate the initial forces (no internal interactions)
+    Benchmark bench;
+    run_velocity_verlet(system, bench, TestFF, TestOpts);
+
+    const auto& forces = system.cell_lists[0].fs;
+
+    ASSERT_EQ(forces[XX], TestFF.wall_constant * 1.0,
+        "the force of the first atom was not added correctly");
+    ASSERT_EQ(forces[YY], TestFF.wall_constant * 2.0,
+        "the force of the first atom was not added correctly");
+    ASSERT_EQ(forces[ZZ], TestFF.wall_constant * 3.0,
+        "the force of the first atom was not added correctly");
+)
+
 RUN_TESTS(
     test_calc_force();
     test_calc_force_with_no_atoms_in_cell_works();
     test_calc_force_outside_of_rcut_is_zero();
     test_calc_force_adds_total_force();
     test_calc_force_between_two_lists();
+    test_calc_force_for_a_wall_if_outside_box();
+    test_calc_force_internal_and_between_cells_consistency_check();
     test_update_velocities();
     test_update_positions();
     test_velocity_verlet_step_single_list();
     test_velocity_verlet_step_list_with_a_neighbour();
     test_velocity_verlet_step_list_with_no_neighbours_does_nothing();
+    test_velocity_verlet_for_system_includes_wall_force_calc();
 )

@@ -13,7 +13,8 @@ constexpr ForceField TestFF (
     1.0, // epsilon
     1.0, // sigma
     10.0, // rcut
-    2.0  // mass
+    2.0,  // mass
+    5.0 // wall_constant
 );
 
 System get_system()

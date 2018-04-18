@@ -13,6 +13,11 @@ enum Direction {
     NDIM
 };
 
+enum class OutputMode {
+    Replace,
+    Append
+};
+
 using real = double;
 using RVec = std::array<real, NDIM>;
 using IVec = std::array<uint64_t, NDIM>;
@@ -112,7 +117,8 @@ System read_conf_from_grofile(const std::string& filename, const real sigma);
 // with positions in nm, so use the sigma factor to convert.
 void write_conf_to_grofile(const System& system,
                            const std::string& path,
-                           const real sigma);
+                           const real sigma,
+                           const OutputMode mode);
 
 // Construct the (3D) cell list configuration for the input system by splitting
 // it into cells based on the input `target_size`. The cells will have sides

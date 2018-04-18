@@ -116,12 +116,20 @@ System read_conf_from_grofile(const std::string& path, const real sigma)
 
 void write_conf_to_grofile(const System& system,
                            const std::string& path,
-                           const real sigma)
+                           const real sigma,
+                           const OutputMode mode)
 {
     constexpr char ATOM_NAME[2] = "C";
     constexpr char RESIDUE_NAME[4] = "SOL";
 
-    std::ofstream out { path, std::ofstream::out };
+    auto open_mode = std::ios::out;
+
+    if (mode == OutputMode::Append)
+    {
+        open_mode = open_mode | std::ios::app;
+    }
+
+    std::ofstream out { path, open_mode };
 
     out << system.title << '\n'
         << system.num_atoms() << '\n';
@@ -144,7 +152,7 @@ void write_conf_to_grofile(const System& system,
 
             out << std::setw(5) << std::right << n
                 << std::setw(5) << std::left << RESIDUE_NAME
-                << std::setw(5) << ATOM_NAME
+                << std::setw(5) << std::right << ATOM_NAME
                 << std::setw(5) << n
                 << std::setw(8) << xabs[XX] * sigma
                 << std::setw(8) << xabs[YY] * sigma

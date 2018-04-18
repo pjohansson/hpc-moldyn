@@ -56,7 +56,7 @@ struct Energetics {
 };
 
 // Describe the system.
-void describe_system_config(const System& system);
+void describe_system_config(const System& system, const ForceField& ff);
 
 // Show the cell list distribution.
 void show_atom_cell_list_distribution(const System& system);
