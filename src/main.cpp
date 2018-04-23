@@ -152,8 +152,8 @@ int main(const int argc, const char* argv[])
                   << "  OUTPUT is the final output configuration\n"
                   << "\n"
                   << "The following optional flags are available:\n"
-                  << "  -p <param.dat>  File with the simulation parameters\n"
-                  << "  -v              Be loud and noisy\n";
+                  << "  -p <params.dat>  File with the simulation parameters\n"
+                  << "  -v               Be loud and noisy\n";
 
         return 1;
     }
