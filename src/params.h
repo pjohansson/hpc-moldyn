@@ -35,8 +35,7 @@ struct Options {
      energy_calc { 0 },
      num_steps { 0 },
      traj_stride { 0 },
-     gen_velocities { false },
-     verbose { false }
+     gen_velocities { false }
     {
         // For Argon ~ 2 fs
         this->set_dt(1e-3);
@@ -55,8 +54,7 @@ struct Options {
              traj_stride;
     std::string input_conf,
                 output_conf;
-    bool gen_velocities,
-         verbose;
+    bool gen_velocities;
 };
 
 // Argon force field
