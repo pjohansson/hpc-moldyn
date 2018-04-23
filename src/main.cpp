@@ -1,6 +1,9 @@
+#include <cstdint>
 #include <ctime>
 #include <iomanip>
 #include <iostream>
+#include <iterator>
+#include <stdexcept>
 
 // Debug
 #include <sstream>
@@ -42,8 +45,144 @@ static bool read_cli_arguments(InputArgs& input_args,
     return true;
 }
 
+// static
+
+enum class ParseResult {
+    Error,
+    Advance,
+    Ok,
+};
+
+template <typename Iterator, typename T>
+static bool parse_value_from_next(const Iterator it,
+                                  const Iterator it_end,
+                                  T& ref)
+{
+    const auto it_value = std::next(it);
+    if (it_value == it_end)
+    {
+        std::cerr << "error: option '" << *it
+            << "' requires a value but none was given" << '\n';
+
+        return false;
+    }
+
+    // Read the value as a number before casting to the correct type
+    try {
+        ref = static_cast<T>(stod(*it_value));
+
+    }
+    catch (const std::invalid_argument& e)
+    {
+        std::cerr << "error: option '" << *it
+            << "' expected a value (got '" << *it_value << "')" << '\n';
+
+        return false;
+    }
+
+    return true;
+}
+
+template <typename Iterator>
+static ParseResult parse_argument(const Iterator it,
+                                  const Iterator it_end,
+                                  Options& opts)
+{
+    const auto argument = (*it).substr(1);
+
+    if (argument == "n")
+    {
+        if (!parse_value_from_next(it, it_end, opts.num_steps))
+        {
+            return ParseResult::Error;
+        }
+
+        return ParseResult::Advance;
+    }
+    else if (argument == "v")
+    {
+        opts.verbose = true;
+    }
+    else
+    {
+        std::cerr << "error: invalid argument '" << *it << '\'' << '\n';
+
+        return ParseResult::Error;
+    }
+
+    return ParseResult::Ok;
+}
+
+static bool read_cli_arguments(const std::vector<std::string>& args)
+{
+    size_t i_positional = 0;
+    Options opts;
+
+    auto arg = args.cbegin();
+    const auto end = args.cend();
+
+    while (arg != end)
+    {
+        if ((*arg).front() == '-')
+        {
+            switch(parse_argument(arg, end, opts))
+            {
+                case ParseResult::Error:
+                    return false;
+                case ParseResult::Advance:
+                    ++arg;
+                default:
+                    break;
+            }
+        }
+        else
+        {
+            switch (i_positional)
+            {
+                case 0:
+                    std::cerr << "conf: " << *arg << '\n';
+                    break;
+
+                case 1:
+                    std::cerr << "out: " << *arg << '\n';
+                    break;
+
+                default:
+                    std::cerr << "error: too many arguments specified" << '\n';
+                    return false;
+            }
+
+            ++i_positional;
+        }
+
+        ++arg;
+    }
+
+    if (i_positional < 2)
+    {
+        return false;
+    }
+
+    return true;
+}
+
 int main(const int argc, const char* argv[])
 {
+    const std::vector<std::string> args (argv + 1, argv + argc);
+
+    if (!read_cli_arguments(args))
+    {
+        std::cerr << "usage: " << argv[0] << " CONF OUTPUT NSTEPS\n"
+                  << "\n"
+                  << "where\n"
+                  << "  CONF is an input configuration in .gro format\n"
+                  << "  OUTPUT is the final output configuration\n"
+                  << "  NSTEPS is the number of steps to run\n";
+        return 1;
+    }
+
+    return 0;
+
     InputArgs input_args;
     if (!read_cli_arguments(input_args, argc, argv))
     {
@@ -63,6 +202,7 @@ int main(const int argc, const char* argv[])
               << "\n\n";
 
     const auto& ff = ArgonFF;
+    const Options opts;
 
     std::cerr << "Reading configuration ... ";
     auto system = read_conf_from_grofile(input_args.input_conf, ff.sigma);
@@ -97,10 +237,10 @@ int main(const int argc, const char* argv[])
             std::cerr << "\rstep " << step;
         }
 
-        run_velocity_verlet(system, benchmark, ff, DefaultOpts);
+        run_velocity_verlet(system, benchmark, ff, opts);
 
         benchmark.start_energy_calc_update();
-        if (step != 0 && (step % DefaultOpts.energy_calc) == 0)
+        if (step != 0 && (step % opts.energy_calc) == 0)
         {
             calculate_system_energetics(energy, system, ff);
         }
@@ -108,7 +248,7 @@ int main(const int argc, const char* argv[])
 
         // [WIP] trajectory output
         benchmark.start_traj_output_update();
-        if (step != 0 && (step % 20 == 0))
+        if (step != 0 && (step % opts.traj_stride == 0))
         {
             write_conf_to_grofile(system, fntraj, ff.sigma, OutputMode::Append);
         }

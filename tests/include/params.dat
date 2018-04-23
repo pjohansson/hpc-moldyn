@@ -1,0 +1,11 @@
+# Comments are ignored.
+# Even several in a row.
+NSTEPS 2000
+# And between parameters.
+DT 0.005
+ENERGYOUT 40
+# It cuts out whitepace
+    TRAJOUT       60
+GENVEL TRUE
+GENTEMP 20
+   # Even for comments

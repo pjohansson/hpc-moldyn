@@ -1,0 +1,7 @@
+# Example parameter file for simulations
+# NSTEPS 1000
+# DT 0.001
+# ENERGYOUT 50
+# TRAJOUT 60
+# GENVEL TRUE
+# GENTEMP 1.0

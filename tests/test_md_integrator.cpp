@@ -17,7 +17,7 @@ constexpr ForceField TestFF (
     5.0 // wall_constant
 );
 
-constexpr Options TestOpts { 5e-3, 100 };
+const Options TestOpts;
 
 ADD_TEST(test_calc_force,
     constexpr ForceField TestFF_long_rcut (
@@ -236,7 +236,7 @@ ADD_TEST(test_update_positions,
 
     constexpr real force = 5e-1;
     constexpr real velocity = 5.0 * force;
-    constexpr real expected_dx =
+    const real expected_dx =
         velocity * TestOpts.dt + 0.5 * (force / TestFF.mass) * TestOpts.dt2;
 
 

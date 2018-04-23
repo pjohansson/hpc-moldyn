@@ -7,7 +7,8 @@ add_compile_options(-ggdb)
 set (test_source_files
      test_system_conf.cpp
      test_md_integrator.cpp
-     test_analytics.cpp)
+     test_analytics.cpp
+     test_read_utils.cpp)
 
 # Files which are used for tests need the correct path inside of the
 # tests. The base path is set in this variable during configuration.
@@ -18,7 +19,10 @@ configure_file (
 )
 
 # Find and copy the required test files to the correct path.
-file(GLOB test_files ${PROJECT_SOURCE_DIR}/tests/include/*.gro)
+file(GLOB test_files
+    ${PROJECT_SOURCE_DIR}/tests/include/*.gro
+    ${PROJECT_SOURCE_DIR}/tests/include/*.dat)
+    
 message(${test_files})
 add_custom_target(copy_test_files)
 foreach(file ${test_files})

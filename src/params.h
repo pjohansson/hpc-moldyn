@@ -30,14 +30,32 @@ struct ForceField {
 };
 
 struct Options {
-    constexpr Options(const double dt, const unsigned energy_calc)
-    :dt { dt },
+    Options()
+    :dt { 1e-3 }, // For argon: 2 fs
      dt2 { dt * dt },
-     energy_calc { energy_calc }
+     gen_temp { 0.0 },
+     energy_calc { 50 },
+     num_steps { 1000 },
+     traj_stride { 50 },
+     gen_velocities { false },
+     verbose { false }
     {}
 
-    double dt, dt2;
-    unsigned energy_calc;
+    void set_dt(const double dt)
+    {
+        this->dt = dt;
+        this->dt2 = dt * dt;
+    }
+
+    double dt, dt2,
+           gen_temp;
+    unsigned energy_calc,
+             num_steps,
+             traj_stride;
+    std::string input_conf,
+                output_conf;
+    bool gen_velocities,
+         verbose;
 };
 
 // Argon force field
@@ -49,7 +67,6 @@ constexpr ForceField ArgonFF = ForceField(
     300000.0 // [epsilon] (non-dimensional)
 );
 
-// For argon: 1e-3 ~ 2 fs time step
-constexpr Options DefaultOpts = Options(1e-3, 5);
+bool read_parameter_file(const std::string path, Options& opts);
 
 #endif // SIMULATION_PARAMETERS_H
