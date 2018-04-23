@@ -31,15 +31,16 @@ struct ForceField {
 
 struct Options {
     Options()
-    :dt { 1e-3 }, // For argon: 2 fs
-     dt2 { dt * dt },
-     gen_temp { 0.0 },
-     energy_calc { 50 },
-     num_steps { 1000 },
-     traj_stride { 50 },
+    :gen_temp { 0.0 },
+     energy_calc { 0 },
+     num_steps { 0 },
+     traj_stride { 0 },
      gen_velocities { false },
      verbose { false }
-    {}
+    {
+        // For Argon ~ 2 fs
+        this->set_dt(1e-3);
+    }
 
     void set_dt(const double dt)
     {

@@ -14,49 +14,28 @@
 #include "integrator.h"
 #include "params.h"
 
-struct InputArgs {
-    std::string input_conf,
-                output_conf;
-    uint64_t num_steps;
-};
-
-enum InputArgPosition {
-    CONF = 1,
-    OUTPUT = 2,
-    NSTEPS = 3,
-    NARGS = 4
-};
-
-static bool read_cli_arguments(InputArgs& input_args,
-                               const int argc,
-                               const char* argv[])
-{
-    if (argc < NARGS)
-    {
-        return false;
-    }
-
-    input_args.input_conf = static_cast<std::string>(argv[CONF]);
-    input_args.output_conf = static_cast<std::string>(argv[OUTPUT]);
-    input_args.num_steps = static_cast<uint64_t>(
-        std::strtoull(argv[NSTEPS], nullptr, 10)
-    );
-
-    return true;
-}
-
-// static
-
 enum class ParseResult {
     Error,
     Advance,
     Ok,
 };
 
-template <typename Iterator, typename T>
-static bool parse_value_from_next(const Iterator it,
-                                  const Iterator it_end,
-                                  T& ref)
+struct InputArgs {
+    InputArgs()
+    :verbose { false },
+     param_file { "params.dat" }
+    {}
+
+    bool verbose;
+    std::string input_conf,
+                output_conf,
+                param_file;
+};
+
+template <typename Iterator>
+static bool parse_string_from_next(const Iterator it,
+                                   const Iterator it_end,
+                                   std::string& ref)
 {
     const auto it_value = std::next(it);
     if (it_value == it_end)
@@ -67,18 +46,7 @@ static bool parse_value_from_next(const Iterator it,
         return false;
     }
 
-    // Read the value as a number before casting to the correct type
-    try {
-        ref = static_cast<T>(stod(*it_value));
-
-    }
-    catch (const std::invalid_argument& e)
-    {
-        std::cerr << "error: option '" << *it
-            << "' expected a value (got '" << *it_value << "')" << '\n';
-
-        return false;
-    }
+    ref = *it_value;
 
     return true;
 }
@@ -86,13 +54,13 @@ static bool parse_value_from_next(const Iterator it,
 template <typename Iterator>
 static ParseResult parse_argument(const Iterator it,
                                   const Iterator it_end,
-                                  Options& opts)
+                                  InputArgs& input_args)
 {
     const auto argument = (*it).substr(1);
 
-    if (argument == "n")
+    if (argument == "p")
     {
-        if (!parse_value_from_next(it, it_end, opts.num_steps))
+        if (!parse_string_from_next(it, it_end, input_args.param_file))
         {
             return ParseResult::Error;
         }
@@ -101,7 +69,7 @@ static ParseResult parse_argument(const Iterator it,
     }
     else if (argument == "v")
     {
-        opts.verbose = true;
+        input_args.verbose = true;
     }
     else
     {
@@ -113,10 +81,10 @@ static ParseResult parse_argument(const Iterator it,
     return ParseResult::Ok;
 }
 
-static bool read_cli_arguments(const std::vector<std::string>& args)
+static bool read_cli_arguments(const std::vector<std::string>& args,
+                               InputArgs& input_args)
 {
     size_t i_positional = 0;
-    Options opts;
 
     auto arg = args.cbegin();
     const auto end = args.cend();
@@ -125,7 +93,7 @@ static bool read_cli_arguments(const std::vector<std::string>& args)
     {
         if ((*arg).front() == '-')
         {
-            switch(parse_argument(arg, end, opts))
+            switch(parse_argument(arg, end, input_args))
             {
                 case ParseResult::Error:
                     return false;
@@ -140,11 +108,11 @@ static bool read_cli_arguments(const std::vector<std::string>& args)
             switch (i_positional)
             {
                 case 0:
-                    std::cerr << "conf: " << *arg << '\n';
+                    input_args.input_conf = *arg;
                     break;
 
                 case 1:
-                    std::cerr << "out: " << *arg << '\n';
+                    input_args.output_conf = *arg;
                     break;
 
                 default:
@@ -166,63 +134,73 @@ static bool read_cli_arguments(const std::vector<std::string>& args)
     return true;
 }
 
+static bool do_step(const size_t step, const size_t stride)
+{
+    return (stride > 0) && (step > 0) && (step % stride == 0);
+}
+
 int main(const int argc, const char* argv[])
 {
-    const std::vector<std::string> args (argv + 1, argv + argc);
-
-    if (!read_cli_arguments(args))
-    {
-        std::cerr << "usage: " << argv[0] << " CONF OUTPUT NSTEPS\n"
-                  << "\n"
-                  << "where\n"
-                  << "  CONF is an input configuration in .gro format\n"
-                  << "  OUTPUT is the final output configuration\n"
-                  << "  NSTEPS is the number of steps to run\n";
-        return 1;
-    }
-
-    return 0;
+    const std::vector<std::string> str_args (argv + 1, argv + argc);
 
     InputArgs input_args;
-    if (!read_cli_arguments(input_args, argc, argv))
+    if (!read_cli_arguments(str_args, input_args))
     {
-        std::cerr << "usage: " << argv[0] << " CONF OUTPUT NSTEPS\n"
+        std::cerr << "usage: " << argv[0] << "[OPTIONS] <CONF> <OUTPUT>\n"
                   << "\n"
-                  << "where\n"
                   << "  CONF is an input configuration in .gro format\n"
                   << "  OUTPUT is the final output configuration\n"
-                  << "  NSTEPS is the number of steps to run\n";
+                  << "\n"
+                  << "The following optional flags are available:\n"
+                  << "  -p <param.dat>  File with the simulation parameters\n"
+                  << "  -v              Be loud and noisy\n";
+
         return 1;
     }
 
     std::cout << "Input arguments: "
               << "conf = " << input_args.input_conf
               << ", output = " << input_args.output_conf
-              << ", num_steps = " << input_args.num_steps
+              << ", parameter file = " << input_args.param_file
               << "\n\n";
 
     const auto& ff = ArgonFF;
-    const Options opts;
 
     std::cerr << "Reading configuration ... ";
     auto system = read_conf_from_grofile(input_args.input_conf, ff.sigma);
     std::cerr << "done.\n";
 
-    std::cerr << "Setting up system ... ";
-    create_cell_lists(system, ff.rcut);
-    gen_system_velocities(system, 3.0);
+    std::cerr << "Reading parameter file ... ";
+    Options opts;
+    if (!read_parameter_file(input_args.param_file, opts))
+    {
+        return 1;
+    }
     std::cerr << "done.\n";
 
-    std::cerr << '\n';
-    describe_system_config(system, ff);
-    std::cerr << '\n';
+    std::cerr << "Setting up system ... ";
+    create_cell_lists(system, ff.rcut);
+    std::cerr << "done.\n\n";
+
+    if (opts.gen_velocities)
+    {
+        std::cerr << "Generating atom velocities around T = " << opts.gen_temp << "  ... ";
+        gen_system_velocities(system, opts.gen_temp);
+        std::cerr << "done.\n\n";
+    }
+
+    if (input_args.verbose)
+    {
+        describe_system_config(system, ff);
+        std::cerr << '\n';
+    }
 
     Benchmark benchmark;
     Energetics energy;
 
-    std::cerr << "Simulating " << input_args.num_steps << " steps:\n";
+    std::cerr << "Simulating " << opts.num_steps << " steps:\n";
 
-    // [WIP] trajectory output
+    // Reopen to clear the trajectory before writing frames into it.
     benchmark.start_traj_output_update();
     std::string fntraj { "traj.gro" };
     {
@@ -230,25 +208,31 @@ int main(const int argc, const char* argv[])
     }
     benchmark.stop_traj_output_update();
 
-    for (unsigned step = 0; step < input_args.num_steps; ++step)
+    size_t stepout_stride = 10;
+
+    for (unsigned step = 0; step < opts.num_steps; ++step)
     {
-        if ((step % 10) == 0)
+        if ((step % stepout_stride) == 0)
         {
             std::cerr << "\rstep " << step;
+
+            if (step >= 200)
+            {
+                stepout_stride = 100;
+            }
         }
 
         run_velocity_verlet(system, benchmark, ff, opts);
 
         benchmark.start_energy_calc_update();
-        if (step != 0 && (step % opts.energy_calc) == 0)
+        if (do_step(step, opts.energy_calc))
         {
             calculate_system_energetics(energy, system, ff);
         }
         benchmark.stop_energy_calc_update();
 
-        // [WIP] trajectory output
         benchmark.start_traj_output_update();
-        if (step != 0 && (step % opts.traj_stride == 0))
+        if (do_step(step, opts.traj_stride))
         {
             write_conf_to_grofile(system, fntraj, ff.sigma, OutputMode::Append);
         }

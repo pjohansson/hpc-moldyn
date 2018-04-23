@@ -22,7 +22,7 @@ configure_file (
 file(GLOB test_files
     ${PROJECT_SOURCE_DIR}/tests/include/*.gro
     ${PROJECT_SOURCE_DIR}/tests/include/*.dat)
-    
+
 message(${test_files})
 add_custom_target(copy_test_files)
 foreach(file ${test_files})
