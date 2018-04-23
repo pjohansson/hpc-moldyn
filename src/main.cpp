@@ -6,9 +6,12 @@
 #include <iterator>
 #include <stdexcept>
 
+#include <mpi.h>
+
 #include "analytics.h"
 #include "conf.h"
 #include "integrator.h"
+#include "mpidata.h"
 #include "params.h"
 
 enum class ParseResult {
@@ -136,8 +139,20 @@ static bool do_step(const size_t step, const size_t stride)
     return (stride > 0) && (step > 0) && (step % stride == 0);
 }
 
-int main(const int argc, const char* argv[])
+int main(int argc, char* argv[])
 {
+    MPI_Init(&argc, &argv);
+
+    int rank = -1;
+    int num_ranks = 0;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &num_ranks);
+
+    std::cerr << "Hello from rank " << rank << " out of " << num_ranks << '\n';
+
+    if (rank == 0)
+    {
+
     const std::vector<std::string> str_args (argv + 1, argv + argc);
 
     InputArgs input_args;
@@ -255,6 +270,10 @@ int main(const int argc, const char* argv[])
     auto t = std::time(nullptr);
     std::cerr << "\nFinished simulation at "
         << std::put_time(std::localtime(&t), "%c") << ".\n";
+
+    }
+
+    MPI_Finalize();
 
     return 0;
 }

@@ -33,5 +33,5 @@
 *~
 
 # Compiled output
-build/
+build*/
 target/
