@@ -1,13 +1,10 @@
 #include <cstdint>
 #include <ctime>
+#include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <iterator>
 #include <stdexcept>
-
-// Debug
-#include <sstream>
-#include <fstream>
 
 #include "analytics.h"
 #include "conf.h"
