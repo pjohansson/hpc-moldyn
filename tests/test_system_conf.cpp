@@ -587,6 +587,64 @@ ADD_TEST(test_resize_cell_list_correctly_removes_values,
     ASSERT_EQ(list.fs.size(), 0, "all atoms were not removed");
 )
 
+ADD_TEST(test_resize_cell_list_for_force_calculation_skips_velocities,
+    CellList list {3, RVec {0.0, 0.0, 0.0}, RVec {0.0, 0.0, 0.0}};
+    list.add_atom(0.0, 1.0, 2.0);
+    list.add_atom(3.0, 4.0, 5.0);
+
+    const vector<real> vs_init {0.1, 0.2, 0.3, 0.4, 0.5, 0.6};
+    list.vs = vs_init;
+
+    list.resize_atom_list_force_calc(4);
+
+    const vector<real> xs_expected {
+        0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+    };
+    const vector<real> vs_expected {
+        0.1, 0.2, 0.3, 0.4, 0.5, 0.6
+    };
+    const vector<real> fs_expected (12, 0.0);
+
+    ASSERT_EQ(list.num_atoms(), 4, "the number of atoms was not updated");
+    ASSERT_EQ_VEC(list.xs, xs_expected, "positions were not filled with zeros");
+    ASSERT_EQ_VEC(list.vs, vs_expected,
+        "velocities were changed when they should not have been");
+    ASSERT_EQ_VEC(list.fs, fs_expected, "forces were not filled with zeros");
+
+    list.resize_atom_list_force_calc(0);
+    ASSERT_EQ(list.num_atoms(), 0, "the number of atoms was not updated");
+    ASSERT_EQ(list.xs.size(), 0,
+        "positions were not removed when shrinking");
+    ASSERT_EQ_VEC(list.vs, vs_expected,
+        "velocities were changed when they should not have been");
+    ASSERT_EQ(list.fs.size(), 0,
+        "forces were not removed when shrinking");
+)
+
+ADD_TEST(test_resize_cell_list_for_force_calculation_resets_forces,
+    CellList list {3, RVec {0.0, 0.0, 0.0}, RVec {0.0, 0.0, 0.0}};
+    list.add_atom(0.0, 1.0, 2.0);
+    list.add_atom(3.0, 4.0, 5.0);
+
+    // These forces should be removed when resizing the list
+    const vector<real> fs_init {0.1, 0.2, 0.3, 0.4, 0.5, 0.6};
+    list.fs = fs_init;
+
+    list.resize_atom_list_force_calc(4);
+
+    const vector<real> xs_expected {
+        0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+    };
+    const vector<real> fs_expected (12, 0.0);
+
+    ASSERT_EQ_VEC(list.fs, fs_expected, "forces were not filled with zeros");
+
+    list.resize_atom_list_force_calc(1);
+    const vector<real> fs_expected_small (3, 0.0);
+    ASSERT_EQ_VEC(list.fs, fs_expected_small,
+        "forces were not removed when shrinking");
+)
+
 RUN_TESTS(
     test_rvec_add_and_sub();
     test_cell_list_init();
@@ -603,4 +661,6 @@ RUN_TESTS(
     test_generate_velocities_at_temperature_gets_close();
     test_resize_cell_list_adds_zero_values_to_all_vectors();
     test_resize_cell_list_correctly_removes_values();
+    test_resize_cell_list_for_force_calculation_skips_velocities();
+    test_resize_cell_list_for_force_calculation_resets_forces();
 );

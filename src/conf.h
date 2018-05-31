@@ -67,6 +67,15 @@ public:
         natoms = new_num_atoms;
     }
 
+    // Resize the cell list for force calculation: ignore the velocity list.
+    void resize_atom_list_force_calc(const uint64_t new_num_atoms) {
+        const auto new_size = NDIM * new_num_atoms;
+        xs.resize(new_size);
+        fs.assign(new_size, 0.0);
+
+        natoms = new_num_atoms;
+    }
+
     /************
     * Variables *
     *************/

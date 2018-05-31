@@ -11,5 +11,7 @@ add_executable(md src/main.cpp)
 add_library(analytics STATIC src/analytics.cpp)
 add_library(conf STATIC src/conf.cpp)
 add_library(integrator STATIC src/integrator.cpp)
+add_library(mpi STATIC src/mpi_impl.cpp)
 add_library(params STATIC src/params.cpp)
-target_link_libraries(md analytics conf integrator params)
+
+target_link_libraries(md analytics conf integrator mpi params)

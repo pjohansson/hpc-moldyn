@@ -49,11 +49,9 @@ struct Options {
 
     double dt, dt2,
            gen_temp;
-    unsigned energy_calc,
+    uint64_t energy_calc,
              num_steps,
              traj_stride;
-    std::string input_conf,
-                output_conf;
     bool gen_velocities;
 };
 
