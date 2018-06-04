@@ -109,7 +109,7 @@ int main(int argc, char* argv[])
         return 1;
     };
 
-    mpi_divide_system_onto_ranks(system, mpi_comm);
+    mpi_init_cell_lists_and_transfer(system, mpi_comm);
 
     size_t stepout_stride = 10;
 
@@ -130,7 +130,18 @@ int main(int argc, char* argv[])
             }
         }
 
-        run_velocity_verlet(system, benchmark, ff, opts);
+        run_velocity_verlet(system, benchmark, mpi_comm, ff, opts);
+
+        // Do we need to calculate energetics or output the trajectory
+        // this step? If so, collect all atoms on the master rank.
+        const auto do_collect_on_master
+            = do_step(step, opts.energy_calc)
+                || do_step(step, opts.traj_stride);
+
+        if (do_collect_on_master)
+        {
+            mpi_collect_atoms_to_master(system, mpi_comm);
+        }
 
         benchmark.start_energy_calc_update();
         if (is_master(mpi_comm) && do_step(step, opts.energy_calc))

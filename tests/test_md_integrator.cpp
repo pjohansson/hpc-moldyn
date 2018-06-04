@@ -19,6 +19,27 @@ constexpr ForceField TestFF (
 
 const Options TestOpts;
 
+static MPIRank get_single_rank_mpi_comm(const System& system)
+{
+    const auto num_cells = system.cell_lists.size();
+
+    MPIRank mpi_comm { 0, 1 };
+
+    vector<vector<size_t>> owned_cells (1);
+
+    for (size_t i = 0; i < num_cells; ++i)
+    {
+        owned_cells.at(0).push_back(i);
+    }
+
+    // vector<vector_size_t>> non_owned_cells (1);
+
+    mpi_comm.mpi_rank_owned_cells = owned_cells;
+    // mpi_comm.mpi_rank
+
+    return mpi_comm;
+}
+
 ADD_TEST(test_calc_force,
     constexpr ForceField TestFF_long_rcut (
         1.0, // epsilon
@@ -296,8 +317,10 @@ ADD_TEST(test_velocity_verlet_step_single_list,
 
     // With the function
     Benchmark bench;
-    run_velocity_verlet(system, bench, TestFF, TestOpts);
-    run_velocity_verlet(system, bench, TestFF, TestOpts);
+    const auto mpi_comm = get_single_rank_mpi_comm(system);
+
+    run_velocity_verlet(system, bench, mpi_comm, TestFF, TestOpts);
+    run_velocity_verlet(system, bench, mpi_comm, TestFF, TestOpts);
 
     ASSERT_EQ_VEC(system.cell_lists[0].xs, list.xs,
         "positions were not updated correctly");
@@ -346,7 +369,9 @@ ADD_TEST(test_velocity_verlet_step_list_with_a_neighbour,
 
     // With the function
     Benchmark bench;
-    run_velocity_verlet(system, bench, TestFF, TestOpts);
+    const auto mpi_comm = get_single_rank_mpi_comm(system);
+
+    run_velocity_verlet(system, bench, mpi_comm, TestFF, TestOpts);
 
     ASSERT_EQ_VEC(system.cell_lists[0].xs, list1.xs,
         "positions were not updated correctly in list1");
@@ -385,7 +410,9 @@ ADD_TEST(test_velocity_verlet_step_list_with_no_neighbours_does_nothing,
     system.cell_lists.push_back(list2);
 
     Benchmark bench;
-    run_velocity_verlet(system, bench, TestFF, TestOpts);
+    const auto mpi_comm = get_single_rank_mpi_comm(system);
+
+    run_velocity_verlet(system, bench, mpi_comm, TestFF, TestOpts);
 
     const vector<real> zeroes (list1.xs.size(), 0.0);
 
@@ -421,7 +448,9 @@ ADD_TEST(test_velocity_verlet_for_system_includes_wall_force_calc,
 
     // Calculate the initial forces (no internal interactions)
     Benchmark bench;
-    run_velocity_verlet(system, bench, TestFF, TestOpts);
+    const auto mpi_comm = get_single_rank_mpi_comm(system);
+
+    run_velocity_verlet(system, bench, mpi_comm, TestFF, TestOpts);
 
     const auto& forces = system.cell_lists[0].fs;
 

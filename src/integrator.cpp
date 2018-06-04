@@ -226,6 +226,7 @@ static void update_velocities_cell(CellList& list,
 
 void run_velocity_verlet(System& system,
                          Benchmark& bench,
+                         const MPIRank& mpi_comm,
                          const ForceField& ff,
                          const Options& opts)
 {
@@ -239,6 +240,9 @@ void run_velocity_verlet(System& system,
     bench.start_cell_list_update();
     update_cell_lists(system);
     bench.stop_cell_list_update();
+
+    // Move atoms to new masters here, then sync all the neighbouring
+    // cells before the force calculation begins.
 
     // The force calculation is in a separate iteration since
     // it is not local to each cell list, which resetting the forces
@@ -257,6 +261,8 @@ void run_velocity_verlet(System& system,
     bench.start_force_wall_update();
     calc_wall_forces(system, ff);
     bench.stop_force_wall_update();
+
+    // Sync the forces here so we can do the velocity update.
 
     bench.start_velocity_update();
     for (auto& list : system.cell_lists)
