@@ -2,8 +2,8 @@
 
 #include "params.h"
 
-#ifndef MPI_DATA_H
-#define MPI_DATA_H
+#ifndef MPI_IMPL_H
+#define MPI_IMPL_H
 
 #ifdef USE_DOUBLE
 #define MPI_MY_REAL_SIZE MPI_DOUBLE
@@ -31,9 +31,39 @@ constexpr size_t MASTER = 0;
     } \
 }
 
-// Print the current rank number and evaluate the body.
+// For every rank: Print the current rank number and a vector on it.
+#define MPI_VEC_PRINT(MPI_COMM, VEC) { \
+    MPI_RANK_PRINT(MPI_COMM, \
+        std::cerr << '['; \
+        for (const auto& VALUE_ : VEC) \
+        { \
+            std::cerr << ' ' << VALUE_; \
+        } \
+        std::cerr << " ]"; \
+    ) \
+}
+
+// For every rank: Print the current rank number and a vector of vectors on it.
+#define MPI_VEC_VEC_PRINT(MPI_COMM, VEC) { \
+    MPI_RANK_PRINT(MPI_COMM, \
+        std::cerr << "\n[\n"; \
+        for (const auto& INNER_VEC_ : VEC) \
+        { \
+            std::cerr << "  ["; \
+            for (const auto& VALUE_ : INNER_VEC_) \
+            { \
+                std::cerr << ' ' << VALUE_;  \
+            } \
+            std::cerr << "]\n"; \
+        } \
+        std::cerr << "]\n"; \
+    ) \
+}
+
+// For every rank: Print the current rank number and evaluate the body,
+// without an MPI barrier.
 #define MPI_RANK_PRINT_NOBARRIER(MPI_COMM, BODY) { \
-    for (auto RANK_ = 0; RANK_ < MPI_COMM.num_ranks; ++RANK_) \
+    for (size_t RANK_ = 0; RANK_ < MPI_COMM.num_ranks; ++RANK_) \
     { \
         if (RANK_ == MPI_COMM.rank) \
         { \
@@ -42,6 +72,18 @@ constexpr size_t MASTER = 0;
             std::cerr << '\n'; \
         } \
     } \
+}
+
+// For every rank: Print the current rank number and a vector on it.
+#define MPI_VEC_PRINT_NOBARRIER(MPI_COMM, VEC) { \
+    MPI_RANK_PRINT_NOBARRIER(MPI_COMM, \
+        std::cerr << '['; \
+        for (const auto& VALUE_ : VEC) \
+        { \
+            std::cerr << ' ' << VALUE_; \
+        } \
+        std::cerr << " ]"; \
+    ) \
 }
 
 struct MPICellComm {
@@ -95,6 +137,7 @@ bool sync_options(Options& opts, const MPIRank& mpi_comm);
 
 // Initial setup of the MPI system.
 void mpi_init_cell_lists_and_transfer(System& system, MPIRank& mpi_comm);
+void mpi_fill_communication_data(MPIRank& mpi_comm, const System& system);
 
 // Interaction cell list synchronization
 void mpi_synchronize_interaction_cell_lists(System& system,
@@ -107,4 +150,4 @@ void reset_received_cell_lists(System& system, const MPIRank& mpi_comm);
 void mpi_move_atoms_to_owning_ranks(System& system, const MPIRank& mpi_comm);
 void mpi_collect_atoms_to_master(System& system, const MPIRank& mpi_comm);
 
-#endif // MPI_DATA_H
+#endif // MPI_IMPL_H

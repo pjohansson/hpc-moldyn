@@ -256,26 +256,34 @@ ADD_TEST(test_get_cell_ownership_per_rank_metadata,
 
 )
 
-ADD_TEST(test_create_all_cells_for_all_mpi_ranks_with_correct_origin_and_size,
+ADD_TEST(test_create_all_cells_for_all_mpi_ranks_with_correct_fields,
     MPIRank mpi_comm;
     init_MPI(mpi_comm);
 
     System system;
 
     const RVec cell_size { 1.0, 2.0, 3.0 };
-    const RVec origin1 { 0.1, 0.2, 0.3 };
-    const RVec origin2 { 0.4, 0.5, 0.6 };
-    const RVec origin3 { 0.7, 0.8, 0.9 };
+    const RVec origin0 { 0.1, 0.2, 0.3 };
+    const RVec origin1 { 0.4, 0.5, 0.6 };
+    const RVec origin2 { 0.7, 0.8, 0.9 };
+
+    const vector<size_t> list0_neighbours {1, 2, 3};
+    const vector<size_t> list1_neighbours {0, 2};
+    const vector<size_t> list2_neighbours;
 
     if (is_master(mpi_comm))
     {
+        CellList list0 { 0, origin0, cell_size };
         CellList list1 { 0, origin1, cell_size };
         CellList list2 { 0, origin2, cell_size };
-        CellList list3 { 0, origin3, cell_size };
 
+        list0.to_neighbours = list0_neighbours;
+        list1.to_neighbours = list1_neighbours;
+        list2.to_neighbours = list2_neighbours;
+
+        system.cell_lists.push_back(list0);
         system.cell_lists.push_back(list1);
         system.cell_lists.push_back(list2);
-        system.cell_lists.push_back(list3);
     }
 
     mpi_create_all_cell_lists(system, 3, mpi_comm);
@@ -283,12 +291,19 @@ ADD_TEST(test_create_all_cells_for_all_mpi_ranks_with_correct_origin_and_size,
     ASSERT_EQ(system.cell_lists.size(), 3,
         "not all ranks have the correct number of cells");
 
-    ASSERT_EQ_VEC(system.cell_lists[0].origin, origin1,
+    ASSERT_EQ_VEC(system.cell_lists[0].origin, origin0,
         "not all ranks have the correct origin of cell 0");
-    ASSERT_EQ_VEC(system.cell_lists[1].origin, origin2,
+    ASSERT_EQ_VEC(system.cell_lists[1].origin, origin1,
         "not all ranks have the correct origin of cell 1");
-    ASSERT_EQ_VEC(system.cell_lists[2].origin, origin3,
+    ASSERT_EQ_VEC(system.cell_lists[2].origin, origin2,
         "not all ranks have the correct origin of cell 2");
+
+    ASSERT_EQ_VEC(system.cell_lists[0].to_neighbours, list0_neighbours,
+        "not all ranks have the correct neighbours list of cell 0");
+    ASSERT_EQ_VEC(system.cell_lists[1].to_neighbours, list1_neighbours,
+        "not all ranks have the correct neighbours list of cell 1");
+    ASSERT_EQ_VEC(system.cell_lists[2].to_neighbours, list2_neighbours,
+        "not all ranks have the correct neighbours list of cell 2");
 
     for (const auto list : system.cell_lists)
     {
@@ -385,6 +400,8 @@ ADD_TEST(test_divide_cell_lists_onto_proper_ranks,
             xs = vector<real> { 0.0, 0.0, 0.0, 1.0, 0.0, 0.0 };
             fs = vector<real> (xs.size(), 0.0);
 
+            ASSERT_EQ(system.cell_lists[0].num_atoms(), 2,
+                "rank 0 does not have the correct number of atoms");
             ASSERT_EQ_VEC(system.cell_lists[0].xs, xs,
                 "rank 0 did not keep its cell positions correctly");
             ASSERT_EQ_VEC(system.cell_lists[0].vs, list1_vels,
@@ -397,6 +414,8 @@ ADD_TEST(test_divide_cell_lists_onto_proper_ranks,
             xs = vector<real> { 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 2.0, 0.0, 0.0 };
             fs = vector<real> (xs.size(), 0.0);
 
+            ASSERT_EQ(system.cell_lists[1].num_atoms(), 3,
+                "rank 1 does not have the correct number of atoms");
             ASSERT_EQ_VEC(system.cell_lists[1].xs, xs,
                 "rank 1 did not get its positions correctly");
             ASSERT_EQ_VEC(system.cell_lists[1].vs, list2_vels,
@@ -409,6 +428,8 @@ ADD_TEST(test_divide_cell_lists_onto_proper_ranks,
             xs = vector<real> { 0.0, 1.0, 0.0 };
             fs = vector<real> (xs.size(), 0.0);
 
+            ASSERT_EQ(system.cell_lists[2].num_atoms(), 1,
+                "rank 2 does not have the correct number of atoms");
             ASSERT_EQ_VEC(system.cell_lists[2].xs, xs,
                 "rank 2 did not get its positions correctly");
             ASSERT_EQ_VEC(system.cell_lists[2].vs, list3_vels,
@@ -421,6 +442,8 @@ ADD_TEST(test_divide_cell_lists_onto_proper_ranks,
             xs = vector<real> { 0.0, 0.0, 1.0 };
             fs = vector<real> (xs.size(), 0.0);
 
+            ASSERT_EQ(system.cell_lists[3].num_atoms(), 1,
+                "rank 3 does not have the correct number of atoms");
             ASSERT_EQ_VEC(system.cell_lists[3].xs, xs,
                 "rank 3 did not get its positions correctly");
             ASSERT_EQ_VEC(system.cell_lists[3].vs, list4_vels,
@@ -886,6 +909,88 @@ ADD_TEST(test_sending_and_receiving_cell_lists_are_consistent,
             ASSERT(in_set(i, send_sets.at(from_rank)),
                    "a received cell was not found in the sender");
         }
+    }
+)
+
+ADD_TEST(test_fill_in_communicators_and_sendrecv_cell_lists,
+    MPIRank mpi_comm, mpi_comm_expected;
+    init_MPI(mpi_comm);
+    init_MPI(mpi_comm_expected);
+
+    mpi_comm.cell_parent_mpi_ranks = vector<size_t> { 3, 2, 1, 0, 3, 2 };
+    mpi_comm_expected.cell_parent_mpi_ranks = vector<size_t> (
+        mpi_comm.cell_parent_mpi_ranks.cbegin(),
+        mpi_comm.cell_parent_mpi_ranks.cend()
+    );
+
+    System system;
+
+    system.cell_lists = {
+        CellList {0, {0.0, 0.0, 0.0}, {1.0, 1.0, 1.0}},
+        CellList {0, {0.0, 1.0, 0.0}, {1.0, 1.0, 1.0}},
+        CellList {0, {1.0, 0.0, 0.0}, {1.0, 1.0, 1.0}},
+        CellList {0, {1.0, 1.0, 0.0}, {1.0, 1.0, 1.0}},
+        CellList {0, {2.0, 0.0, 0.0}, {1.0, 1.0, 1.0}},
+        CellList {0, {2.0, 1.0, 0.0}, {1.0, 1.0, 1.0}}
+    };
+
+    // Neighbouring cell indices
+    system.cell_lists[0].to_neighbours = vector<size_t> { 1, 2 };
+    system.cell_lists[1].to_neighbours = vector<size_t> { 2, 3 };
+    system.cell_lists[2].to_neighbours = vector<size_t> { 3, 4 };
+    system.cell_lists[3].to_neighbours = vector<size_t> { 4, 5 };
+    system.cell_lists[4].to_neighbours = vector<size_t> { 5, 0 };
+    system.cell_lists[5].to_neighbours = vector<size_t> { 0, 1 };
+
+    // Constuct comparison object by running the expected functions
+    // one-by-one
+    mpi_create_cell_comm_groups(mpi_comm_expected, system.cell_lists);
+    mpi_create_sending_and_receiving_cell_lists_for_ranks(
+        mpi_comm_expected, system.cell_lists
+    );
+
+    mpi_fill_communication_data(mpi_comm, system);
+
+    ASSERT_EQ(mpi_comm.cell_comm_groups.size(),
+              mpi_comm_expected.cell_comm_groups.size(),
+              "the comm groups were not filled in");
+
+    for (size_t i = 0; i < system.cell_lists.size(); ++i)
+    {
+        const auto& comm_group = mpi_comm.cell_comm_groups.at(i);
+        const auto& comm_group_expected
+            = mpi_comm_expected.cell_comm_groups.at(i);
+
+        ASSERT_EQ(comm_group.root, comm_group_expected.root,
+            "root in a cell MPICellComm object was not matching");
+        ASSERT_EQ_VEC(comm_group.to_ranks, comm_group_expected.to_ranks,
+            "to_ranks in a cell MPICellComm object was not matching");
+
+        if (comm_group.comm != MPI_COMM_NULL && comm_group_expected.comm != MPI_COMM_NULL)
+        {
+            int result;
+            const auto comm_groups_equal = static_cast<bool>(
+                MPI_Comm_compare(comm_group.comm, comm_group_expected.comm, &result)
+            );
+            ASSERT(static_cast<bool>(result != MPI_UNEQUAL),
+                "comm in a cell MPICellComm object was not matching");
+        }
+    }
+
+    for (size_t rank = 0; rank < 4; ++rank)
+    {
+        const auto& recv_cells = mpi_comm.mpi_rank_received_cells.at(rank);
+        const auto& send_cells = mpi_comm.mpi_rank_sending_cells.at(rank);
+
+        const auto& recv_cells_expected
+            = mpi_comm_expected.mpi_rank_received_cells.at(rank);
+        const auto& send_cells_expected
+            = mpi_comm_expected.mpi_rank_sending_cells.at(rank);
+
+        ASSERT_EQ_VEC(recv_cells, recv_cells_expected,
+            "receiving cells were not matching for a rank");
+        ASSERT_EQ_VEC(send_cells, send_cells_expected,
+            "receiving cells were not matching for a rank");
     }
 )
 
@@ -2144,11 +2249,12 @@ RUN_TESTS(
     test_divide_cell_lists_onto_proper_ranks();
 
     // Creation of MPI required data and records
-    test_create_all_cells_for_all_mpi_ranks_with_correct_origin_and_size();
+    test_create_all_cells_for_all_mpi_ranks_with_correct_fields();
     test_create_cell_mpi_communication_groups_for_sending();
     test_create_record_of_which_cells_every_rank_will_receive();
     test_create_record_of_which_cells_every_rank_will_send();
     test_sending_and_receiving_cell_lists_are_consistent();
+    test_fill_in_communicators_and_sendrecv_cell_lists();
 
     // Syncing of data between threads
     test_sync_num_of_transmitted_positions();

@@ -1,5 +1,5 @@
 include_directories(${PROJECT_SOURCE_DIR} ${PROJECT_BINARY_DIR})
-link_libraries(conf integrator analytics params)
+link_libraries(conf integrator analytics params mpi)
 add_compile_options(-ggdb)
 
 # Add all test source files which should be compiled into executables,

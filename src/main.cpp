@@ -110,6 +110,7 @@ int main(int argc, char* argv[])
     };
 
     mpi_init_cell_lists_and_transfer(system, mpi_comm);
+    mpi_fill_communication_data(mpi_comm, system);
 
     size_t stepout_stride = 10;
 

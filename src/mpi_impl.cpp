@@ -334,6 +334,14 @@ static void mpi_create_sending_and_receiving_cell_lists_for_ranks(
     mpi_comm.mpi_rank_sending_cells = sending_cells_per_rank;
 }
 
+void mpi_fill_communication_data(MPIRank& mpi_comm, const System& system)
+{
+    mpi_create_cell_comm_groups(mpi_comm, system.cell_lists);
+    mpi_create_sending_and_receiving_cell_lists_for_ranks(
+        mpi_comm, system.cell_lists
+    );
+}
+
 
 /**************************
  * SYSTEM CELL LIST SETUP *
@@ -366,11 +374,49 @@ static void mpi_create_all_cell_lists(System& system,
             origin.data(), NDIM, MPI_MY_REAL_SIZE, MASTER, MPI_COMM_WORLD
         );
 
+        // Synchronize the number of neighbouring cells, then the indices
+        // after allocating memory. Cast the numbers from and to uint64_t
+        // to always use the correct MPI datatype.
+        uint64_t num_to_neighbours = 0;
+        std::vector<uint64_t> to_neighbours;
+
+        if (is_master(mpi_comm))
+        {
+            for (const auto& i : system.cell_lists.at(index).to_neighbours)
+            {
+                to_neighbours.push_back(static_cast<uint64_t>(i));
+            }
+
+            num_to_neighbours = static_cast<uint64_t>(to_neighbours.size());
+        }
+
+        MPI_Bcast(
+            &num_to_neighbours, 1, MPI_UINT64_T,
+            MASTER, MPI_COMM_WORLD
+        );
+
+        if (!is_master(mpi_comm))
+        {
+            to_neighbours.assign(num_to_neighbours, 0);
+        }
+
+        MPI_Bcast(
+            to_neighbours.data(), num_to_neighbours, MPI_UINT64_T,
+            MASTER, MPI_COMM_WORLD
+        );
+
         if (!is_master(mpi_comm))
         {
             CellList list {0, origin, cell_size};
+
+            for (const auto& i : to_neighbours)
+            {
+                list.to_neighbours.push_back(static_cast<size_t>(i));
+            }
+
             system.cell_lists.push_back(list);
         }
+
     }
 }
 
