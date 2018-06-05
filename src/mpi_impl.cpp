@@ -76,28 +76,26 @@ static std::vector<size_t> mpi_get_cell_indices(const uint64_t num_cells,
     const auto max_rank_cells = static_cast<uint64_t>(ceil(
         static_cast<double>(num_cells) / static_cast<double>(num_mpi_ranks)
     ));
-    // = 1
-    auto num_with_max = static_cast<uint64_t>(
-        num_cells % max_rank_cells
-    );
+
+    auto num_ranks_with_max = static_cast<uint64_t>(num_cells % num_mpi_ranks);
 
     if (num_cells % max_rank_cells == 0)
     {
-        num_with_max = num_mpi_ranks;
+        num_ranks_with_max = num_mpi_ranks;
     }
 
     uint64_t first = 0,
              last = 0;
 
-    if (rank < num_with_max)
+    if (rank < num_ranks_with_max)
     {
         first = rank * max_rank_cells;
         last = first + max_rank_cells;
     }
     else
     {
-        first = num_with_max * max_rank_cells
-            + (rank - num_with_max) * (max_rank_cells - 1);
+        first = num_ranks_with_max * max_rank_cells
+            + (rank - num_ranks_with_max) * (max_rank_cells - 1);
         last = first + (max_rank_cells - 1);
     }
 

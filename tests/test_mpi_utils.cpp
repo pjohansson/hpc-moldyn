@@ -51,7 +51,7 @@ ADD_TEST(test_cell_indices_are_correctly_divided,
                   rank0_indices,
                   "rank 0 does not get correct indices for 13");
 
-    rank1_indices = vector<uint64_t> { 4, 5, 6, };
+    rank1_indices = vector<uint64_t> { 4, 5, 6 };
     ASSERT_EQ_VEC(mpi_get_cell_indices(num_cells_B, 1, num_mpi_ranks),
                   rank1_indices,
                   "rank 1 does not get correct indices for 13");
@@ -128,6 +128,41 @@ ADD_TEST(test_get_owned_cells_per_rank_even_dividers,
         ASSERT_EQ_VEC(owned_cells_per_rank_2.at(i), expected_slice,
             "a rank got the wrong cells");
     }
+)
+
+ADD_TEST(test_get_owned_cells_per_rank_odd_dividers,
+    const size_t num_ranks = 3;
+    const size_t num_cells = 320;
+
+    const auto owned_cells_per_rank = get_owned_cells_per_rank(
+        num_cells, num_ranks
+    );
+
+    vector<size_t> rank0_expected; // should get 107 cells: 0-106
+    vector<size_t> rank1_expected; // 107 cells: 107-213
+    vector<size_t> rank2_expected; // 106 cells: 214-319
+
+    for (size_t i = 0; i <= 106; ++i)
+    {
+        rank0_expected.push_back(i);
+    }
+    for (size_t i = 107; i <= 213; ++i)
+    {
+        rank1_expected.push_back(i);
+    }
+    for (size_t i = 214; i <= 319; ++i)
+    {
+        rank2_expected.push_back(i);
+    }
+
+    ASSERT_EQ(owned_cells_per_rank.size(), 3,
+        "incorrect number of ranks returned");
+    ASSERT_EQ_VEC(owned_cells_per_rank.at(0), rank0_expected,
+        "rank 0 does not have the correct indices");
+    ASSERT_EQ_VEC(owned_cells_per_rank.at(1), rank1_expected,
+        "rank 1 does not have the correct indices");
+    ASSERT_EQ_VEC(owned_cells_per_rank.at(2), rank2_expected,
+        "rank 2 does not have the correct indices");
 )
 
 ADD_TEST(test_get_cell_ranks_from_owned_cells_per_rank_lists,
@@ -314,7 +349,7 @@ ADD_TEST(test_divide_cell_lists_onto_proper_ranks,
     }
 
     mpi_init_cell_lists_and_transfer(system, mpi_comm);
-    
+
     // Check that each rank has the number of atoms of its cell
     switch (mpi_comm.rank)
     {
@@ -2103,6 +2138,7 @@ RUN_TESTS(
     test_get_cell_ranks_from_owned_cells_per_rank_lists();
     test_get_owned_cells_per_rank();
     test_get_owned_cells_per_rank_even_dividers();
+    test_get_owned_cells_per_rank_odd_dividers();
     test_get_non_owned_cells_for_ranks();
     test_get_cell_ownership_per_rank_metadata();
     test_divide_cell_lists_onto_proper_ranks();
