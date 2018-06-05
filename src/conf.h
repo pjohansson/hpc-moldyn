@@ -63,11 +63,14 @@ public:
         xs.resize(new_size);
         vs.resize(new_size);
         fs.resize(new_size);
+        fs_prev.resize(new_size);
 
         natoms = new_num_atoms;
     }
 
-    // Resize the cell list for force calculation: ignore the velocity list.
+    // Resize the cell list for force calculation:
+    // ignore the velocity and previous force lists, since they are only
+    // used on the owning rank which this will not be called on.
     void resize_atom_list_force_calc(const uint64_t new_num_atoms) {
         const auto new_size = NDIM * new_num_atoms;
         xs.resize(new_size);

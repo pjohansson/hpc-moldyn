@@ -560,6 +560,8 @@ ADD_TEST(test_resize_cell_list_adds_zero_values_to_all_vectors,
     ASSERT_EQ_VEC(list.xs, xs_expected, "positions were not filled with zeros");
     ASSERT_EQ_VEC(list.vs, vs_expected, "velocities were not filled with zeros");
     ASSERT_EQ_VEC(list.fs, fs_expected, "forces were not filled with zeros");
+    ASSERT_EQ_VEC(list.fs_prev, fs_expected,
+        "previous forces were not filled with zeros");
 )
 
 ADD_TEST(test_resize_cell_list_correctly_removes_values,
@@ -585,6 +587,7 @@ ADD_TEST(test_resize_cell_list_correctly_removes_values,
     ASSERT_EQ(list.xs.size(), 0, "all atoms were not removed");
     ASSERT_EQ(list.vs.size(), 0, "all atoms were not removed");
     ASSERT_EQ(list.fs.size(), 0, "all atoms were not removed");
+    ASSERT_EQ(list.fs_prev.size(), 0, "all atoms were not removed");
 )
 
 ADD_TEST(test_resize_cell_list_for_force_calculation_skips_velocities,
