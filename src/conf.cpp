@@ -323,12 +323,12 @@ void update_cell_lists(System& system)
 
     for (auto& list : new_lists)
     {
-        list.xs.shrink_to_fit();
-        list.vs.shrink_to_fit();
-        list.fs_prev.shrink_to_fit();
+    //     list.xs.shrink_to_fit();
+    //     list.vs.shrink_to_fit();
+    //     list.fs_prev.shrink_to_fit();
 
         list.fs.resize(list.xs.size(), 0.0);
-        list.fs.shrink_to_fit();
+        // list.fs.shrink_to_fit();
 
         list.update_num_atoms();
     }

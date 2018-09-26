@@ -256,13 +256,44 @@ ADD_TEST(test_get_cell_ownership_per_rank_metadata,
 
 )
 
-ADD_TEST(test_create_all_cells_for_all_mpi_ranks_with_correct_fields,
+ADD_TEST(test_synchronize_system_struct,
     MPIRank mpi_comm;
     init_MPI(mpi_comm);
 
     System system;
 
+    const IVec shape { 3, 5, 7 };
+    const RVec box_size { 10.0, 11.0, 12.0 };
     const RVec cell_size { 1.0, 2.0, 3.0 };
+    const string title { "system title" };
+
+
+    if (is_master(mpi_comm))
+    {
+        system.shape = shape;
+        system.box_size = box_size;
+        system.cell_size = cell_size;
+        system.title = title;
+    }
+
+    mpi_synchronize_system_struct(system, mpi_comm);
+
+    ASSERT_EQ_VEC(system.shape, shape, "shape was not synchronized");
+    ASSERT_EQ_VEC(system.box_size, box_size, "box size was not synchronized");
+    ASSERT_EQ_VEC(system.cell_size, cell_size,
+        "cell_size was not synchronized");
+    ASSERT_EQ_VEC(system.title, title, "title was not synchronized");
+)
+
+ADD_TEST(test_create_all_cells_for_all_mpi_ranks_with_correct_fields,
+    MPIRank mpi_comm;
+    init_MPI(mpi_comm);
+
+    System system;
+    
+    const RVec cell_size { 1.0, 2.0, 3.0 };
+    system.cell_size = cell_size;
+
     const RVec origin0 { 0.1, 0.2, 0.3 };
     const RVec origin1 { 0.4, 0.5, 0.6 };
     const RVec origin2 { 0.7, 0.8, 0.9 };
@@ -318,6 +349,12 @@ ADD_TEST(test_divide_cell_lists_onto_proper_ranks,
 
     System system;
 
+    // system struct fields to be synced
+    const IVec shape { 3, 5, 7 };
+    const RVec box_size { 10.0, 11.0, 12.0 };
+    const RVec cell_size { 1.0, 2.0, 3.0 };
+    const std::string title { "system title" };
+
     const vector<real> list1_vels { 0.0, 1.0, 2.0, 3.0, 4.0, 5.0 };
     const vector<real> list2_vels { 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9 };
     const vector<real> list3_vels { 6.0, 7.0, 8.0 };
@@ -361,9 +398,14 @@ ADD_TEST(test_divide_cell_lists_onto_proper_ranks,
         system.cell_lists.push_back(list2);
         system.cell_lists.push_back(list3);
         system.cell_lists.push_back(list4);
+
+        system.shape = shape;
+        system.box_size = box_size;
+        system.cell_size = cell_size;
+        system.title = title;
     }
 
-    mpi_init_cell_lists_and_transfer(system, mpi_comm);
+    mpi_init_cell_lists_and_transfer_atoms(system, mpi_comm);
 
     // Check that each rank has the number of atoms of its cell
     switch (mpi_comm.rank)
@@ -452,6 +494,12 @@ ADD_TEST(test_divide_cell_lists_onto_proper_ranks,
                 "rank 3 did not get the correct number of zero-initialized forces");
             break;
     }
+
+    ASSERT_EQ_VEC(system.shape, shape, "shape was not synchronized");
+    ASSERT_EQ_VEC(system.box_size, box_size, "box size was not synchronized");
+    ASSERT_EQ_VEC(system.cell_size, cell_size,
+        "cell_size was not synchronized");
+    ASSERT_EQ_VEC(system.title, title, "title was not synchronized");
 )
 
 ADD_TEST(test_init_mpi_for_test_suite,
@@ -2246,6 +2294,7 @@ RUN_TESTS(
     test_get_owned_cells_per_rank_odd_dividers();
     test_get_non_owned_cells_for_ranks();
     test_get_cell_ownership_per_rank_metadata();
+    test_synchronize_system_struct();
     test_divide_cell_lists_onto_proper_ranks();
 
     // Creation of MPI required data and records

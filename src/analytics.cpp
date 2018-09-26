@@ -46,7 +46,7 @@ void show_atom_cell_list_distribution(const System& system)
 
     for (const auto& list : system.cell_lists)
     {
-        const auto frac = list.num_atoms() / static_cast<float>(max_atoms);
+        const auto frac = static_cast<float>(list.num_atoms()) / static_cast<float>(max_atoms);
         const auto num_chars = static_cast<unsigned>(frac * max_hist_length);
 
         stars.replace(stars.cbegin(), stars.cend(), max_hist_length, ' ');

@@ -167,6 +167,7 @@ ADD_TEST(test_calc_force_for_a_wall_if_outside_box,
     const RVec cell_size {1.0, 1.0, 1.0};
 
     auto system = System(title, box_size);
+    const auto mpi_comm = get_single_rank_mpi_comm(system);
     system.cell_size = cell_size;
     system.shape = IVec {1, 1, 1};
 
@@ -182,7 +183,7 @@ ADD_TEST(test_calc_force_for_a_wall_if_outside_box,
     system.cell_lists.push_back(list);
 
     // Calculate the initial forces (no internal interactions)
-    calc_wall_forces(system, TestFF);
+    calc_wall_forces(system, mpi_comm, TestFF);
 
     const auto& forces = system.cell_lists[0].fs;
 

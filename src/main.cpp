@@ -15,6 +15,9 @@
 #include "mpi_impl.h"
 #include "params.h"
 
+#define DEBUG 1;
+#define DEBUG_HOLD 1;
+
 int main(int argc, char* argv[])
 {
     MPI_Init(&argc, &argv);
@@ -32,7 +35,7 @@ int main(int argc, char* argv[])
     Options opts;
     System system;
 
-    const auto& ff = ArgonFF;
+    ForceField ff = UninitializedFF;
 
     if (is_master(mpi_comm))
     {
@@ -48,28 +51,50 @@ int main(int argc, char* argv[])
                 << "\n"
                 << "The following optional flags are available:\n"
                 << "  -p <params.dat>  File with the simulation parameters\n"
+                << "  -f <[.dat]>      File with force field parameters (default: Argon)\n"
                 << "  -v               Be loud and noisy\n";
 
             return 1;
         }
 
-        std::cout << "Input arguments: "
-                  << "conf = " << input_args.input_conf
-                  << ", output = " << input_args.output_conf
-                  << ", parameter file = " << input_args.param_file
-                  << "\n\n";
-
-        std::cerr << "Reading configuration ... ";
-        system = read_conf_from_grofile(
-            input_args.input_conf, ff.sigma
-        );
-        std::cerr << "done.\n";
+        std::cout << "Input arguments:" << '\n'
+                  << "  conf = " << input_args.input_conf << '\n'
+                  << "  output = " << input_args.output_conf << '\n'
+                  << "  parameter file = " << input_args.param_file << '\n';
+        if (input_args.read_forcefield)
+        {
+            std::cout
+                << "  forcefield file = " << input_args.forcefield_file << '\n';
+        }
+        std::cout << "\n";
 
         std::cerr << "Reading parameter file ... ";
         if (!read_parameter_file(input_args.param_file, opts))
         {
             return 1;
         }
+        std::cerr << "done.\n";
+
+        if (input_args.read_forcefield)
+        {
+            std::cerr << "Reading force field file ... ";
+            ff = read_forcefield_file(input_args.forcefield_file);
+            if (!ff.is_valid)
+            {
+                return 1;
+            }
+            std::cerr << "done.\n";
+        }
+        else
+        {
+            ff = ArgonFF;
+            std::cerr << "No force field was specified. Defaulting to Argon parameters.\n";
+        }
+
+        std::cerr << "Reading configuration ... ";
+        system = read_conf_from_grofile(
+            input_args.input_conf, ff.sigma
+        );
         std::cerr << "done.\n";
 
         std::cerr << "Setting up system ... ";
@@ -109,17 +134,45 @@ int main(int argc, char* argv[])
         return 1;
     };
 
-    mpi_init_cell_lists_and_transfer(system, mpi_comm);
+    if (!sync_forcefield(ff, mpi_comm))
+    {
+        if (is_master(mpi_comm))
+        {
+            std::cerr << "error: could not sync force field between MPI ranks\n";
+        }
+
+        MPI_Finalize();
+
+        return 1;
+    };
+
+    mpi_init_cell_lists_and_transfer_atoms(system, mpi_comm);
+    mpi_move_atoms_to_owning_ranks(system, mpi_comm);
     mpi_fill_communication_data(mpi_comm, system);
 
-    size_t stepout_stride = 10;
+    MPI_RANK_PRINT(mpi_comm, 
+        describe_system_config(system, ff);
+    )
+
+    // size_t stepout_stride = 10;
+    size_t stepout_stride = 1;
 
     if (is_master(mpi_comm))
     {
+        std::cerr << "Force field parameters:\n"
+            << "  epsilon       = " << ff.epsilon << " [J]\n"
+            << "  sigma         = " << ff.sigma << " [nm]\n"
+            << "  mass          = " << ff.mass << " [u]\n"
+            << "  cutoff        = " << ff.rcut << " [sigma]\n"
+            << "  wall constant = " << ff.wall_constant << " [epsilon]\n\n";
+
         std::cerr << "Simulating " << opts.num_steps << " steps:\n";
     }
 
-    for (unsigned step = 0; step < opts.num_steps; ++step)
+    // MPI_VEC_VEC_PRINT(mpi_comm, mpi_comm.mpi_rank_owned_cells);
+    // MPI_VEC_VEC_PRINT(mpi_comm, mpi_comm.mpi_rank_non_owned_cells);
+
+    for (uint64_t step = 0; step < opts.num_steps; ++step)
     {
         if (is_master(mpi_comm) && ((step % stepout_stride) == 0))
         {
@@ -129,7 +182,25 @@ int main(int argc, char* argv[])
             {
                 stepout_stride = 100;
             }
+
+            // std::cerr << '\n';
         }
+
+
+
+        // if (is_master(mpi_comm))
+        // {
+        //     std::cerr << "num_atoms in owned cells after move:\n";
+        // }
+        // MPI_RANK_PRINT(mpi_comm,
+        //     unsigned num_atoms = 0;
+        //     for (const auto i : mpi_comm.mpi_rank_owned_cells.at(mpi_comm.rank))
+        //     {
+        //         num_atoms += system.cell_lists.at(i).num_atoms();
+        //     }
+        
+        //     std::cerr << num_atoms << ' ' << system.num_atoms();
+        // )
 
         run_velocity_verlet(system, benchmark, mpi_comm, ff, opts);
 
@@ -139,10 +210,19 @@ int main(int argc, char* argv[])
             = do_step(step, opts.energy_calc)
                 || do_step(step, opts.traj_stride);
 
+        // MPI_RANK_PRINT(mpi_comm,
+        //     std::cerr << system.num_atoms();
+        // )
+
+        // TODO: Reenable this.
         if (do_collect_on_master)
         {
-            mpi_collect_atoms_to_master(system, mpi_comm);
+            // mpi_collect_atoms_to_master(system, mpi_comm);
         }
+
+        // MPI_RANK_PRINT(mpi_comm,
+        //     std::cerr << system.num_atoms();
+        // )
 
         benchmark.start_energy_calc_update();
         if (is_master(mpi_comm) && do_step(step, opts.energy_calc))
@@ -160,9 +240,20 @@ int main(int argc, char* argv[])
         }
         benchmark.stop_traj_output_update();
 
+        // DEBUG: Wait for a keypress after each step while debugging
+#ifdef DEBUG_HOLD
+        if (is_master(mpi_comm))
+        {
+            std::cerr << " holding ...";
+            std::cin.get();
+        }
+#endif
+
         // TODO: time idle
         MPI_Barrier(MPI_COMM_WORLD);
     }
+
+    mpi_collect_atoms_to_master(system, mpi_comm);
 
     if (is_master(mpi_comm))
     {
@@ -170,6 +261,7 @@ int main(int argc, char* argv[])
 
         std::cerr << "\r                                                  \r"
                   << "Finished.\n\n";
+
 
         std::cerr << "Writing final system to disk as '"
             << input_args.output_conf

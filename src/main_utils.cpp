@@ -7,14 +7,17 @@ enum class ParseResult {
 struct InputArgs {
     InputArgs()
     :verbose { false },
+     read_forcefield { false },
      param_file { "params.dat" },
+     forcefield_file { "" },
      traj_file { "traj.gro" }
     {}
 
-    bool verbose;
+    bool verbose, read_forcefield;
     std::string input_conf,
                 output_conf,
                 param_file,
+                forcefield_file,
                 traj_file;
 };
 
@@ -47,6 +50,15 @@ static ParseResult parse_argument(const Iterator it,
     if (argument == "p")
     {
         if (!parse_string_from_next(it, it_end, input_args.param_file))
+        {
+            return ParseResult::Error;
+        }
+
+        return ParseResult::Advance;
+    }
+    else if (argument == "f")
+    {
+        if (!parse_string_from_next(it, it_end, input_args.forcefield_file))
         {
             return ParseResult::Error;
         }
@@ -115,6 +127,11 @@ static bool read_cli_arguments(const std::vector<std::string>& args,
     if (i_positional < 2)
     {
         return false;
+    }
+
+    if (input_args.forcefield_file.size() > 0)
+    {
+        input_args.read_forcefield = true;
     }
 
     return true;

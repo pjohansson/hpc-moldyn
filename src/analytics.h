@@ -6,6 +6,8 @@
 #ifndef ANALYTICS_H
 #define ANALYTICS_H
 
+using ChronoTime = decltype(std::chrono::system_clock::now());
+
 class Benchmark {
 public:
     // Initialize all timers to 0 and start the total simulation timer.
@@ -53,14 +55,14 @@ public:
                                   rest;
 
 private:
-    decltype(std::chrono::system_clock::now()) cell_list_start,
-                                               force_start,
-                                               force_wall_start,
-                                               position_start,
-                                               velocity_start,
-                                               energy_calc_start,
-                                               traj_output_start,
-                                               total_start;
+    ChronoTime cell_list_start,
+               force_start,
+               force_wall_start,
+               position_start,
+               velocity_start,
+               energy_calc_start,
+               traj_output_start,
+               total_start;
 };
 
 // Keep track of the non-dimensional energetics of the system during

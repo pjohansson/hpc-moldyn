@@ -1,4 +1,7 @@
 #include <mpi.h>
+#include <ostream>
+#include <chrono>
+#include <thread>
 
 #include "params.h"
 
@@ -17,16 +20,19 @@ constexpr size_t MASTER = 0;
  * DEBUG PRINTING *
  ******************/
 
+#define MSDELAY 20
+
 // For every rank: Print the current rank number and evaluate the body.
 #define MPI_RANK_PRINT(MPI_COMM, BODY) { \
     for (size_t RANK_ = 0; RANK_ < MPI_COMM.num_ranks; ++RANK_) \
     { \
-        if (RANK_ == MPI_COMM.rank) \
+        if (is_rank(RANK_, MPI_COMM)) \
         { \
             std::cerr << "rank " << RANK_ << ": "; \
             BODY \
-            std::cerr << '\n'; \
+            std::cerr << '\n' << std::flush; \
         } \
+        std::this_thread::sleep_for(std::chrono::milliseconds(MSDELAY)); \
         MPI_Barrier(MPI_COMM_WORLD); \
     } \
 }
@@ -39,7 +45,7 @@ constexpr size_t MASTER = 0;
         { \
             std::cerr << ' ' << VALUE_; \
         } \
-        std::cerr << " ]"; \
+        std::cerr << " ]" << std::flush; \
     ) \
 }
 
@@ -54,9 +60,9 @@ constexpr size_t MASTER = 0;
             { \
                 std::cerr << ' ' << VALUE_;  \
             } \
-            std::cerr << "]\n"; \
+            std::cerr << " ]\n"; \
         } \
-        std::cerr << "]\n"; \
+        std::cerr << "]\n" << std::flush; \
     ) \
 }
 
@@ -65,11 +71,11 @@ constexpr size_t MASTER = 0;
 #define MPI_RANK_PRINT_NOBARRIER(MPI_COMM, BODY) { \
     for (size_t RANK_ = 0; RANK_ < MPI_COMM.num_ranks; ++RANK_) \
     { \
-        if (RANK_ == MPI_COMM.rank) \
+        if (is_rank(RANK_, MPI_COMM.rank)) \
         { \
             std::cerr << "rank " << RANK_ << ": "; \
             BODY \
-            std::cerr << '\n'; \
+            std::cerr << '\n' << std::flush; \
         } \
     } \
 }
@@ -82,7 +88,7 @@ constexpr size_t MASTER = 0;
         { \
             std::cerr << ' ' << VALUE_; \
         } \
-        std::cerr << " ]"; \
+        std::cerr << " ]" << std::flush; \
     ) \
 }
 
@@ -106,11 +112,13 @@ struct MPIRank {
     // For each cell in the system, the rank which owns it.
     std::vector<size_t> cell_parent_mpi_ranks;
 
-    // For each MPI rank, which cells it owns.
+    // For each MPI rank, which cells it owns. Every rank has this information
+    // for every other rank, too.
     std::vector<std::vector<size_t>> mpi_rank_owned_cells;
 
     // For each MPI rank, which cells it does not own. The complement
-    // to the owned field.
+    // to the owned field. Every rank has this information for every other
+    // rank, too.
     std::vector<std::vector<size_t>> mpi_rank_non_owned_cells;
 
     // For each cell in the system: a communication record with all ranks
@@ -134,9 +142,10 @@ bool is_master(const MPIRank& mpi_comm);
 bool is_rank(const size_t rank, const MPIRank& mpi_comm);
 bool init_MPI(MPIRank& mpi_comm);
 bool sync_options(Options& opts, const MPIRank& mpi_comm);
+bool sync_forcefield(ForceField& ff, const MPIRank& mpi_comm);
 
 // Initial setup of the MPI system.
-void mpi_init_cell_lists_and_transfer(System& system, MPIRank& mpi_comm);
+void mpi_init_cell_lists_and_transfer_atoms(System& system, MPIRank& mpi_comm);
 void mpi_fill_communication_data(MPIRank& mpi_comm, const System& system);
 
 // Interaction cell list synchronization

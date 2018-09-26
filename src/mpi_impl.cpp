@@ -48,14 +48,15 @@ bool init_MPI(MPIRank& mpi_comm)
 
 bool sync_options(Options& opts, const MPIRank& mpi_comm)
 {
-    MPI_Bcast(&opts.dt, 1, MPI_DOUBLE, MASTER, MPI_COMM_WORLD);
-    MPI_Bcast(&opts.dt2, 1, MPI_DOUBLE, MASTER, MPI_COMM_WORLD);
+    MPI_Bcast(&opts.dt,       1, MPI_DOUBLE, MASTER, MPI_COMM_WORLD);
+    MPI_Bcast(&opts.dt2,      1, MPI_DOUBLE, MASTER, MPI_COMM_WORLD);
     MPI_Bcast(&opts.gen_temp, 1, MPI_DOUBLE, MASTER, MPI_COMM_WORLD);
 
     MPI_Bcast(&opts.energy_calc, 1, MPI_UINT64_T, MASTER, MPI_COMM_WORLD);
-    MPI_Bcast(&opts.num_steps, 1, MPI_UINT64_T, MASTER, MPI_COMM_WORLD);
+    MPI_Bcast(&opts.num_steps,   1, MPI_UINT64_T, MASTER, MPI_COMM_WORLD);
     MPI_Bcast(&opts.traj_stride, 1, MPI_UINT64_T, MASTER, MPI_COMM_WORLD);
 
+    // Cast the bool into a value to transmit, then cast back
     auto gen_velocities = static_cast<uint64_t>(opts.gen_velocities);
     MPI_Bcast(&gen_velocities, 1, MPI_UINT64_T, MASTER, MPI_COMM_WORLD);
     opts.gen_velocities = gen_velocities;
@@ -63,6 +64,22 @@ bool sync_options(Options& opts, const MPIRank& mpi_comm)
     return true;
 }
 
+bool sync_forcefield(ForceField& ff, const MPIRank& mpi_comm)
+{
+    MPI_Bcast(&ff.epsilon,       1, MPI_MY_REAL_SIZE, MASTER, MPI_COMM_WORLD);
+    MPI_Bcast(&ff.sigma,         1, MPI_MY_REAL_SIZE, MASTER, MPI_COMM_WORLD);
+    MPI_Bcast(&ff.mass,          1, MPI_MY_REAL_SIZE, MASTER, MPI_COMM_WORLD);
+    MPI_Bcast(&ff.rcut,          1, MPI_MY_REAL_SIZE, MASTER, MPI_COMM_WORLD);
+    MPI_Bcast(&ff.rcut2,         1, MPI_MY_REAL_SIZE, MASTER, MPI_COMM_WORLD);
+    MPI_Bcast(&ff.wall_constant, 1, MPI_MY_REAL_SIZE, MASTER, MPI_COMM_WORLD);
+
+    // Cast the bool into a value to transmit, then cast back
+    auto is_valid = static_cast<uint64_t>(ff.is_valid);
+    MPI_Bcast(&is_valid, 1, MPI_UINT64_T, MASTER, MPI_COMM_WORLD);
+    ff.is_valid = is_valid;
+
+    return true;
+}
 
 /**********************************************
  * STATIC BOOK KEEPING FOR MPI RANK OWNERSHIP *
@@ -353,15 +370,7 @@ static void mpi_create_all_cell_lists(System& system,
                                       const uint64_t num_cells,
                                       const MPIRank& mpi_comm)
 {
-    RVec cell_size,
-         origin;
-
-    if (is_master(mpi_comm))
-    {
-        cell_size = system.cell_lists.at(0).size;
-    }
-
-    MPI_Bcast(cell_size.data(), NDIM, MPI_MY_REAL_SIZE, MASTER, MPI_COMM_WORLD);
+    RVec origin;
 
     for (size_t index = 0; index < num_cells; ++index)
     {
@@ -407,7 +416,7 @@ static void mpi_create_all_cell_lists(System& system,
 
         if (!is_master(mpi_comm))
         {
-            CellList list {0, origin, cell_size};
+            CellList list {0, origin, system.cell_size};
 
             for (const auto& i : to_neighbours)
             {
@@ -420,13 +429,50 @@ static void mpi_create_all_cell_lists(System& system,
     }
 }
 
+static void mpi_synchronize_system_struct(System& system,
+                                          const MPIRank& mpi_comm)
+{
+    MPI_Bcast(
+        system.shape.data(), NDIM, MPI_UINT64_T,
+        MASTER, MPI_COMM_WORLD
+    );
+
+    MPI_Bcast(
+        system.box_size.data(), NDIM, MPI_MY_REAL_SIZE,
+        MASTER, MPI_COMM_WORLD
+    );
+
+    MPI_Bcast(
+        system.cell_size.data(), NDIM, MPI_MY_REAL_SIZE,
+        MASTER, MPI_COMM_WORLD
+    );
+
+    uint64_t num_chars = system.title.size();
+    MPI_Bcast(&num_chars, 1, MPI_UINT64_T, MASTER, MPI_COMM_WORLD);
+
+    std::vector<char> buf(num_chars, ' ');
+
+    if (is_master(mpi_comm))
+    {
+        buf.assign(system.title.cbegin(), system.title.cend());
+    }
+
+    MPI_Bcast(buf.data(), num_chars, MPI_CHAR, MASTER, MPI_COMM_WORLD);
+
+    if (!is_master(mpi_comm))
+    {
+        system.title.assign(buf.cbegin(), buf.cend());
+    }
+}
+
 // Given a system in which rank 0 owns all the cell lists, transfer them
 // to their parent ranks.
-void mpi_init_cell_lists_and_transfer(System& system, MPIRank& mpi_comm)
+void mpi_init_cell_lists_and_transfer_atoms(System& system, MPIRank& mpi_comm)
 {
     auto num_cells = static_cast<uint64_t>(system.cell_lists.size());
     MPI_Bcast(&num_cells, 1, MPI_UINT64_T, MASTER, MPI_COMM_WORLD);
 
+    mpi_synchronize_system_struct(system, mpi_comm);
     fill_mpi_rank_and_cell_ownership(mpi_comm, num_cells);
     mpi_create_all_cell_lists(system, num_cells, mpi_comm);
     mpi_move_atoms_to_owning_ranks(system, mpi_comm);
