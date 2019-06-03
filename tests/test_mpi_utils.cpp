@@ -2282,7 +2282,19 @@ ADD_TEST(test_collect_all_data_on_master_rank,
     }
 )
 
+ADD_TEST(test_init_mpi_sets_comm_record_to_all_ranks,
+    MPIRank mpi_comm;
+    init_MPI(mpi_comm);
+
+    int result;
+    MPI_Comm_compare(mpi_comm.comm_world, MPI_COMM_WORLD, &result);
+
+    ASSERT_EQ(result, MPI_IDENT, "init_MPI does not set the communication record to MPI_COMM_WORLD");
+)
+
 RUN_TESTS_MPI(
+    // MPI setup
+    test_init_mpi_sets_comm_record_to_all_ranks();
 
     // Rank-cell-ownership data setup
     test_cell_indices_are_correctly_divided();

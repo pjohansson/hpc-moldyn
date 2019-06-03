@@ -71,7 +71,7 @@ constexpr size_t MASTER = 0;
 #define MPI_RANK_PRINT_NOBARRIER(MPI_COMM, BODY) { \
     for (size_t RANK_ = 0; RANK_ < MPI_COMM.num_ranks; ++RANK_) \
     { \
-        if (is_rank(RANK_, MPI_COMM.rank)) \
+        if (is_rank(RANK_, MPI_COMM)) \
         { \
             std::cerr << "rank " << RANK_ << ": "; \
             BODY \
@@ -136,6 +136,11 @@ struct MPIRank {
 
     // For each MPI rank, which cells it will transmit for interactions.
     std::vector<std::vector<size_t>> mpi_rank_sending_cells;
+
+    // Communication record for all ranks participating in the simulation.
+    // Kept separately from MPI_COMM_WORLD since some tests will not want 
+    // to run on all ranks which necessitates specifying a subset.
+    MPI_Comm comm_world;
 };
 
 bool is_master(const MPIRank& mpi_comm);

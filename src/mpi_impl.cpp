@@ -42,23 +42,24 @@ bool init_MPI(MPIRank& mpi_comm)
 
     mpi_comm.rank = static_cast<size_t>(rank);
     mpi_comm.num_ranks = static_cast<size_t>(num_ranks);
+    mpi_comm.comm_world = MPI_COMM_WORLD;
 
     return true;
 }
 
 bool sync_options(Options& opts, const MPIRank& mpi_comm)
 {
-    MPI_Bcast(&opts.dt,       1, MPI_DOUBLE, MASTER, MPI_COMM_WORLD);
-    MPI_Bcast(&opts.dt2,      1, MPI_DOUBLE, MASTER, MPI_COMM_WORLD);
-    MPI_Bcast(&opts.gen_temp, 1, MPI_DOUBLE, MASTER, MPI_COMM_WORLD);
+    MPI_Bcast(&opts.dt,       1, MPI_DOUBLE, MASTER, mpi_comm.comm_world);
+    MPI_Bcast(&opts.dt2,      1, MPI_DOUBLE, MASTER, mpi_comm.comm_world);
+    MPI_Bcast(&opts.gen_temp, 1, MPI_DOUBLE, MASTER, mpi_comm.comm_world);
 
-    MPI_Bcast(&opts.energy_calc, 1, MPI_UINT64_T, MASTER, MPI_COMM_WORLD);
-    MPI_Bcast(&opts.num_steps,   1, MPI_UINT64_T, MASTER, MPI_COMM_WORLD);
-    MPI_Bcast(&opts.traj_stride, 1, MPI_UINT64_T, MASTER, MPI_COMM_WORLD);
+    MPI_Bcast(&opts.energy_calc, 1, MPI_UINT64_T, MASTER, mpi_comm.comm_world);
+    MPI_Bcast(&opts.num_steps,   1, MPI_UINT64_T, MASTER, mpi_comm.comm_world);
+    MPI_Bcast(&opts.traj_stride, 1, MPI_UINT64_T, MASTER, mpi_comm.comm_world);
 
     // Cast the bool into a value to transmit, then cast back
     auto gen_velocities = static_cast<uint64_t>(opts.gen_velocities);
-    MPI_Bcast(&gen_velocities, 1, MPI_UINT64_T, MASTER, MPI_COMM_WORLD);
+    MPI_Bcast(&gen_velocities, 1, MPI_UINT64_T, MASTER, mpi_comm.comm_world);
     opts.gen_velocities = gen_velocities;
 
     return true;
@@ -66,16 +67,16 @@ bool sync_options(Options& opts, const MPIRank& mpi_comm)
 
 bool sync_forcefield(ForceField& ff, const MPIRank& mpi_comm)
 {
-    MPI_Bcast(&ff.epsilon,       1, MPI_MY_REAL_SIZE, MASTER, MPI_COMM_WORLD);
-    MPI_Bcast(&ff.sigma,         1, MPI_MY_REAL_SIZE, MASTER, MPI_COMM_WORLD);
-    MPI_Bcast(&ff.mass,          1, MPI_MY_REAL_SIZE, MASTER, MPI_COMM_WORLD);
-    MPI_Bcast(&ff.rcut,          1, MPI_MY_REAL_SIZE, MASTER, MPI_COMM_WORLD);
-    MPI_Bcast(&ff.rcut2,         1, MPI_MY_REAL_SIZE, MASTER, MPI_COMM_WORLD);
-    MPI_Bcast(&ff.wall_constant, 1, MPI_MY_REAL_SIZE, MASTER, MPI_COMM_WORLD);
+    MPI_Bcast(&ff.epsilon,       1, MPI_MY_REAL_SIZE, MASTER, mpi_comm.comm_world);
+    MPI_Bcast(&ff.sigma,         1, MPI_MY_REAL_SIZE, MASTER, mpi_comm.comm_world);
+    MPI_Bcast(&ff.mass,          1, MPI_MY_REAL_SIZE, MASTER, mpi_comm.comm_world);
+    MPI_Bcast(&ff.rcut,          1, MPI_MY_REAL_SIZE, MASTER, mpi_comm.comm_world);
+    MPI_Bcast(&ff.rcut2,         1, MPI_MY_REAL_SIZE, MASTER, mpi_comm.comm_world);
+    MPI_Bcast(&ff.wall_constant, 1, MPI_MY_REAL_SIZE, MASTER, mpi_comm.comm_world);
 
     // Cast the bool into a value to transmit, then cast back
     auto is_valid = static_cast<uint64_t>(ff.is_valid);
-    MPI_Bcast(&is_valid, 1, MPI_UINT64_T, MASTER, MPI_COMM_WORLD);
+    MPI_Bcast(&is_valid, 1, MPI_UINT64_T, MASTER, mpi_comm.comm_world);
     ff.is_valid = is_valid;
 
     return true;
@@ -236,7 +237,7 @@ static void mpi_create_cell_comm_groups(MPIRank& mpi_comm,
                                         const std::vector<CellList>& cell_lists)
 {
     MPI_Group buf_group, world_group;
-    MPI_Comm_group(MPI_COMM_WORLD, &world_group);
+    MPI_Comm_group(mpi_comm.comm_world, &world_group);
 
     size_t i = 0;
 
@@ -275,7 +276,7 @@ static void mpi_create_cell_comm_groups(MPIRank& mpi_comm,
         );
 
         MPI_Comm buf_comm;
-        MPI_Comm_create(MPI_COMM_WORLD, buf_group, &buf_comm);
+        MPI_Comm_create(mpi_comm.comm_world, buf_group, &buf_comm);
 
         // Get the cell root (owner) in the constructed communicator group
         // by translating from MPI_COMM_WORLD
@@ -380,7 +381,7 @@ static void mpi_create_all_cell_lists(System& system,
         }
 
         MPI_Bcast(
-            origin.data(), NDIM, MPI_MY_REAL_SIZE, MASTER, MPI_COMM_WORLD
+            origin.data(), NDIM, MPI_MY_REAL_SIZE, MASTER, mpi_comm.comm_world
         );
 
         // Synchronize the number of neighbouring cells, then the indices
@@ -401,7 +402,7 @@ static void mpi_create_all_cell_lists(System& system,
 
         MPI_Bcast(
             &num_to_neighbours, 1, MPI_UINT64_T,
-            MASTER, MPI_COMM_WORLD
+            MASTER, mpi_comm.comm_world
         );
 
         if (!is_master(mpi_comm))
@@ -411,7 +412,7 @@ static void mpi_create_all_cell_lists(System& system,
 
         MPI_Bcast(
             to_neighbours.data(), num_to_neighbours, MPI_UINT64_T,
-            MASTER, MPI_COMM_WORLD
+            MASTER, mpi_comm.comm_world
         );
 
         if (!is_master(mpi_comm))
@@ -434,21 +435,21 @@ static void mpi_synchronize_system_struct(System& system,
 {
     MPI_Bcast(
         system.shape.data(), NDIM, MPI_UINT64_T,
-        MASTER, MPI_COMM_WORLD
+        MASTER, mpi_comm.comm_world
     );
 
     MPI_Bcast(
         system.box_size.data(), NDIM, MPI_MY_REAL_SIZE,
-        MASTER, MPI_COMM_WORLD
+        MASTER, mpi_comm.comm_world
     );
 
     MPI_Bcast(
         system.cell_size.data(), NDIM, MPI_MY_REAL_SIZE,
-        MASTER, MPI_COMM_WORLD
+        MASTER, mpi_comm.comm_world
     );
 
     uint64_t num_chars = system.title.size();
-    MPI_Bcast(&num_chars, 1, MPI_UINT64_T, MASTER, MPI_COMM_WORLD);
+    MPI_Bcast(&num_chars, 1, MPI_UINT64_T, MASTER, mpi_comm.comm_world);
 
     std::vector<char> buf(num_chars, ' ');
 
@@ -457,7 +458,7 @@ static void mpi_synchronize_system_struct(System& system,
         buf.assign(system.title.cbegin(), system.title.cend());
     }
 
-    MPI_Bcast(buf.data(), num_chars, MPI_CHAR, MASTER, MPI_COMM_WORLD);
+    MPI_Bcast(buf.data(), num_chars, MPI_CHAR, MASTER, mpi_comm.comm_world);
 
     if (!is_master(mpi_comm))
     {
@@ -470,7 +471,7 @@ static void mpi_synchronize_system_struct(System& system,
 void mpi_init_cell_lists_and_transfer_atoms(System& system, MPIRank& mpi_comm)
 {
     auto num_cells = static_cast<uint64_t>(system.cell_lists.size());
-    MPI_Bcast(&num_cells, 1, MPI_UINT64_T, MASTER, MPI_COMM_WORLD);
+    MPI_Bcast(&num_cells, 1, MPI_UINT64_T, MASTER, mpi_comm.comm_world);
 
     mpi_synchronize_system_struct(system, mpi_comm);
     fill_mpi_rank_and_cell_ownership(mpi_comm, num_cells);
@@ -514,7 +515,7 @@ static std::vector<MPI_Request> mpi_send_numbers(
         {
             MPI_Isend(
                 &num, 1, MPI_UINT64_T,
-                rank, index_cell, MPI_COMM_WORLD, &request
+                rank, index_cell, mpi_comm.comm_world, &request
             );
         }
     }
@@ -539,7 +540,7 @@ static std::vector<MPI_Request> mpi_recv_numbers(
         const auto from_rank = mpi_comm.cell_parent_mpi_ranks.at(index_cell);
 
         MPI_Irecv(&num_recv_per_cell.at(i), 1, MPI_UINT64_T,
-            from_rank, index_cell, MPI_COMM_WORLD, &request);
+            from_rank, index_cell, mpi_comm.comm_world, &request);
     }
 
     return mpi_recv_requests;
@@ -573,7 +574,7 @@ static std::vector<size_t> mpi_sync_number_of_transmitted_atoms(
         MPI_STATUSES_IGNORE
     );
 
-    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Barrier(mpi_comm.comm_world);
 
     return num_recv_per_cell;
 }
@@ -663,7 +664,7 @@ static void mpi_transmit_interaction_cell_lists(
         mpi_recv_requests.data(),
         MPI_STATUSES_IGNORE
     );
-    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Barrier(mpi_comm.comm_world);
 }
 
 static std::vector<MPI_Request> mpi_send_cell_list_forces(
@@ -746,7 +747,7 @@ void mpi_synchronize_interaction_cell_lists(System& system,
                 << "). Something is wrong with the MPI book keeping.\n";
         )
 
-        MPI_Abort(MPI_COMM_WORLD, 1);
+        MPI_Abort(mpi_comm.comm_world, 1);
     }
 
     reserve_memory_for_received_lists(
@@ -777,7 +778,7 @@ void mpi_collect_forces_from_interaction_cell_lists(System& system,
         MPI_STATUSES_IGNORE
     );
 
-    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Barrier(mpi_comm.comm_world);
 }
 
 // For the calling MPI rank:
@@ -801,7 +802,7 @@ void reset_received_cell_lists(System& system, const MPIRank& mpi_comm)
  **************************************/
 
 // For the calling MPI rank:
-// For every rank, get the cells to transmit to them.
+// For every other rank, get the cells to transmit to them.
 static std::vector<std::vector<uint64_t>>
 get_cells_to_transmit(const std::vector<CellList>& cell_lists,
                       const MPIRank&               mpi_comm)
@@ -850,7 +851,7 @@ static std::vector<size_t> mpi_sync_number_of_transmitted_cells(
         MPI_Iscatter(
             num_cells_to_transmit_per_rank.data(), 1, MPI_UINT64_T,
             num_cells_to_receive_per_rank.data() + rank, 1, MPI_UINT64_T,
-            rank, MPI_COMM_WORLD, &mpi_requests.at(rank)
+            rank, mpi_comm.comm_world, &mpi_requests.at(rank)
         );
     }
 
@@ -870,7 +871,8 @@ struct CellRecvInfo {
 static MPI_Request
 mpi_send_cell_indices_and_num_atoms(const std::vector<CellList>& cell_lists,
                                     const std::vector<uint64_t>& transmit_cells,
-                                    const size_t                 to_rank)
+                                    const size_t                 to_rank,
+                                    const MPIRank&               mpi_comm)
 {
     MPI_Request cells_request = nullptr,
                 nums_request = nullptr;
@@ -889,13 +891,13 @@ mpi_send_cell_indices_and_num_atoms(const std::vector<CellList>& cell_lists,
     MPI_Isend(
         transmit_nums.data(), num_cells,
         MPI_UINT64_T, to_rank, 0,
-        MPI_COMM_WORLD, &nums_request
+        mpi_comm.comm_world, &nums_request
     );
 
     MPI_Isend(
         transmit_cells.data(), num_cells,
         MPI_UINT64_T, to_rank, 1,
-        MPI_COMM_WORLD, &cells_request
+        mpi_comm.comm_world, &cells_request
     );
 
     // Wait for the atom number send to be complete before returning,
@@ -944,7 +946,7 @@ mpi_sync_moving_cell_information(
             {
                 mpi_send_cells_requests.at(rank)
                     = mpi_send_cell_indices_and_num_atoms(
-                        cell_lists, transmit_cells, rank);
+                        cell_lists, transmit_cells, rank, mpi_comm);
             }
 
             if (num > 0)
@@ -953,14 +955,14 @@ mpi_sync_moving_cell_information(
                     info.num_atoms.data(),
                     static_cast<int>(num), MPI_UINT64_T,
                     rank, 0,
-                    MPI_COMM_WORLD, &mpi_recv_num_atoms_requests.at(rank)
+                    mpi_comm.comm_world, &mpi_recv_num_atoms_requests.at(rank)
                 );
 
                 MPI_Irecv(
                     info.cell_indices.data(),
                     static_cast<int>(num), MPI_UINT64_T,
                     rank, 1,
-                    MPI_COMM_WORLD, &mpi_recv_cells_requests.at(rank)
+                    mpi_comm.comm_world, &mpi_recv_cells_requests.at(rank)
                 );
             }
         }
@@ -981,7 +983,7 @@ mpi_sync_moving_cell_information(
         mpi_recv_num_atoms_requests.data(),
         MPI_STATUSES_IGNORE
     );
-    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Barrier(mpi_comm.comm_world);
 
     return recv_cell_info_per_rank;
 }
@@ -1046,13 +1048,13 @@ static SendRecvRequests mpi_send_atoms(
             MPI_Isend(
                 list.xs.data(), static_cast<int>(list.xs.size()), MPI_MY_REAL_SIZE,
                 rank, index_cell,
-                MPI_COMM_WORLD, &pos_request
+                mpi_comm.comm_world, &pos_request
             );
 
             MPI_Isend(
                 list.vs.data(), static_cast<int>(list.vs.size()), MPI_MY_REAL_SIZE,
                 rank, index_cell + cell_lists.size(),
-                MPI_COMM_WORLD, &vel_request
+                mpi_comm.comm_world, &vel_request
             );
 
             mpi_pos_requests.push_back(pos_request);
@@ -1107,13 +1109,13 @@ static SendRecvRequests mpi_receive_atoms(
             MPI_Irecv(
                 list.xs.data() + begin, NDIM * num_atoms, MPI_MY_REAL_SIZE,
                 rank, index_cell,
-                MPI_COMM_WORLD, &pos_request
+                mpi_comm.comm_world, &pos_request
             );
 
             MPI_Irecv(
                 list.vs.data() + begin, NDIM * num_atoms, MPI_MY_REAL_SIZE,
                 rank, cell_lists.size() + index_cell,
-                MPI_COMM_WORLD, &vel_request
+                mpi_comm.comm_world, &vel_request
             );
 
             num_atoms_present += static_cast<size_t>(num_atoms);
@@ -1168,7 +1170,7 @@ mpi_move_atoms(
         MPI_STATUSES_IGNORE
     );
 
-    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Barrier(mpi_comm.comm_world);
 }
 
 void mpi_move_atoms_to_owning_ranks(System& system, const MPIRank& mpi_comm)
