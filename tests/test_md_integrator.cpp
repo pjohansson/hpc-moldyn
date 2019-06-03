@@ -4,6 +4,7 @@
 
 #include "src/analytics.cpp"
 #include "src/conf.h"
+#include "src/mpi_impl.h"
 #include "src/params.h"
 #include "src/integrator.cpp"
 
@@ -32,10 +33,26 @@ static MPIRank get_single_rank_mpi_comm(const System& system)
         owned_cells.at(0).push_back(i);
     }
 
-    // vector<vector_size_t>> non_owned_cells (1);
-
+    mpi_comm.cell_parent_mpi_ranks = std::vector<size_t> (num_cells, 0);
     mpi_comm.mpi_rank_owned_cells = owned_cells;
-    // mpi_comm.mpi_rank
+
+    // Set up a communication group with the master rank
+    MPI_Group world_group, buf_group;
+    MPI_Comm_group(MPI_COMM_WORLD, &world_group);
+    const int ranks[1] = {0};
+    MPI_Group_incl(world_group, 1, ranks, &buf_group);
+
+    MPI_Comm comm_world;
+    MPI_Comm_create_group(MPI_COMM_WORLD, buf_group, 0, &comm_world);
+    mpi_comm.comm_world = comm_world;
+
+    // Only one rank: create empty vectors for it 
+    mpi_comm.mpi_rank_non_owned_cells = std::vector<std::vector<size_t>> (1);
+    mpi_comm.mpi_rank_received_cells = std::vector<std::vector<size_t>> (1);
+    mpi_comm.mpi_rank_sending_cells = std::vector<std::vector<size_t>> (1);
+
+    MPI_Group_free(&world_group);
+    MPI_Group_free(&buf_group);
 
     return mpi_comm;
 }
@@ -167,9 +184,9 @@ ADD_TEST(test_calc_force_for_a_wall_if_outside_box,
     const RVec cell_size {1.0, 1.0, 1.0};
 
     auto system = System(title, box_size);
-    const auto mpi_comm = get_single_rank_mpi_comm(system);
     system.cell_size = cell_size;
     system.shape = IVec {1, 1, 1};
+
 
     // The list has two atoms outside the box (above/below the box)
     // and one inside which should not be affected:
@@ -181,6 +198,8 @@ ADD_TEST(test_calc_force_for_a_wall_if_outside_box,
     list.add_atom(0.0, 0.0, 0.0); // at (0.5, 0.5, 0.5) in system coords
 
     system.cell_lists.push_back(list);
+
+    const auto mpi_comm = get_single_rank_mpi_comm(system);
 
     // Calculate the initial forces (no internal interactions)
     calc_wall_forces(system, mpi_comm, TestFF);
@@ -463,7 +482,7 @@ ADD_TEST(test_velocity_verlet_for_system_includes_wall_force_calc,
         "the force of the first atom was not added correctly");
 )
 
-RUN_TESTS(
+RUN_TESTS_MPI(
     test_calc_force();
     test_calc_force_with_no_atoms_in_cell_works();
     test_calc_force_outside_of_rcut_is_zero();

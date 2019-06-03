@@ -2282,9 +2282,7 @@ ADD_TEST(test_collect_all_data_on_master_rank,
     }
 )
 
-RUN_TESTS(
-    MPI_Init(0, nullptr);
-    test_init_mpi_for_test_suite();
+RUN_TESTS_MPI(
 
     // Rank-cell-ownership data setup
     test_cell_indices_are_correctly_divided();
@@ -2319,6 +2317,4 @@ RUN_TESTS(
 
     // Misc
     test_reset_received_cells();
-
-    MPI_Finalize();
 )
