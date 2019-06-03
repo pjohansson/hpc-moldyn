@@ -52,8 +52,7 @@ using namespace test;
         return num_failed; \
     }
 
-// Macro which adds a main function which runs the input test functions.
-// The function will return the number of tests which failed.
+// Run tests in MPI but only on the master rank
 #define RUN_TESTS_MPI(...) \
     int main(int argc, char* argv[]) { \
         MPI_Init(0, nullptr); \
@@ -82,6 +81,46 @@ using namespace test;
             } \
         } \
         \
+        MPI_Finalize(); \
+        \
+        return num_failed; \
+    }
+
+// Run tests on all MPI ranks
+#define RUN_TESTS_MPI_ALL(...) \
+    int main(int argc, char* argv[]) { \
+        MPI_Init(0, nullptr); \
+        MPIRank mpi_comm; \
+        init_MPI(mpi_comm); \
+        \
+        if (mpi_comm.num_ranks != NUM_MPI_RANKS) \
+        { \
+            cout << "[Error] Number of MPI ranks must be " << NUM_MPI_RANKS \
+                 << " for testing, was " << mpi_comm.num_ranks << ".\n"; \
+            return 1; \
+        } \
+        \
+        if (is_master(mpi_comm)) \
+        { \
+            std::cout << "Running tests in '" << __FILE__ << "'.\n"; \
+        } \
+        \
+        __VA_ARGS__ \
+        \
+        if (is_master(mpi_comm)) \
+        { \
+            if (num_failed == 0) { \
+                cout << "All tests passed.\n\n"; \
+            } \
+            else if (num_failed == 1) { \
+                cout << num_failed << " test failed.\n\n"; \
+            } \
+            else { \
+                cout << num_failed << " tests failed.\n\n"; \
+            } \
+        } \
+        \
+        MPI_Barrier(MPI_COMM_WORLD); \
         MPI_Finalize(); \
         \
         return num_failed; \

@@ -200,6 +200,7 @@ ADD_TEST(test_calc_force_for_a_wall_if_outside_box,
     system.cell_lists.push_back(list);
 
     const auto mpi_comm = get_single_rank_mpi_comm(system);
+    // MPI_VEC_VEC_PRINT(mpi_comm, mpi_comm.mpi_rank_owned_cells);
 
     // Calculate the initial forces (no internal interactions)
     calc_wall_forces(system, mpi_comm, TestFF);

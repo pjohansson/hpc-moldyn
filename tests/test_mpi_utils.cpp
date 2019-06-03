@@ -2292,7 +2292,7 @@ ADD_TEST(test_init_mpi_sets_comm_record_to_all_ranks,
     ASSERT_EQ(result, MPI_IDENT, "init_MPI does not set the communication record to MPI_COMM_WORLD");
 )
 
-RUN_TESTS_MPI(
+RUN_TESTS_MPI_ALL(
     // MPI setup
     test_init_mpi_sets_comm_record_to_all_ranks();
 
