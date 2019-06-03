@@ -8,6 +8,13 @@ using namespace test;
 #define NUM_MPI_RANKS 4
 #endif
 
+// Print a statement and then execute it.
+#define LOGRUN(x) \
+    std::cerr << "Running " << (#x) << " ... "; \
+    x; \
+    std::cerr << "done.\n"; \
+    fflush(stderr); 
+
 // CMake will replace this definition with the correct path
 // inside the build directory which means that out-of-source
 // builds are possible and the tests can be run from any
