@@ -15,8 +15,8 @@
 #include "mpi_impl.h"
 #include "params.h"
 
-#define DEBUG 1;
-#define DEBUG_HOLD 1;
+// #define DEBUG 1;
+// #define DEBUG_HOLD 1;
 
 int main(int argc, char* argv[])
 {
@@ -52,6 +52,7 @@ int main(int argc, char* argv[])
                 << "The following optional flags are available:\n"
                 << "  -p <params.dat>  File with the simulation parameters\n"
                 << "  -f <[.dat]>      File with force field parameters (default: Argon)\n"
+                << "  -t <traj.gro>    Write trajectory to this file\n"
                 << "  -v               Be loud and noisy\n";
 
             return 1;
@@ -150,15 +151,13 @@ int main(int argc, char* argv[])
     mpi_move_atoms_to_owning_ranks(system, mpi_comm);
     mpi_fill_communication_data(mpi_comm, system);
 
-    MPI_RANK_PRINT(mpi_comm, 
-        describe_system_config(system, ff);
-    )
-
     // size_t stepout_stride = 10;
-    size_t stepout_stride = 1;
+    size_t stepout_stride = 10;
 
     if (is_master(mpi_comm))
     {
+        describe_system_config(system, ff);
+
         std::cerr << "Force field parameters:\n"
             << "  epsilon       = " << ff.epsilon << " [J]\n"
             << "  sigma         = " << ff.sigma << " [nm]\n"
@@ -168,9 +167,6 @@ int main(int argc, char* argv[])
 
         std::cerr << "Simulating " << opts.num_steps << " steps:\n";
     }
-
-    // MPI_VEC_VEC_PRINT(mpi_comm, mpi_comm.mpi_rank_owned_cells);
-    // MPI_VEC_VEC_PRINT(mpi_comm, mpi_comm.mpi_rank_non_owned_cells);
 
     for (uint64_t step = 0; step < opts.num_steps; ++step)
     {
@@ -182,47 +178,20 @@ int main(int argc, char* argv[])
             {
                 stepout_stride = 100;
             }
-
-            // std::cerr << '\n';
         }
-
-
-
-        // if (is_master(mpi_comm))
-        // {
-        //     std::cerr << "num_atoms in owned cells after move:\n";
-        // }
-        // MPI_RANK_PRINT(mpi_comm,
-        //     unsigned num_atoms = 0;
-        //     for (const auto i : mpi_comm.mpi_rank_owned_cells.at(mpi_comm.rank))
-        //     {
-        //         num_atoms += system.cell_lists.at(i).num_atoms();
-        //     }
-        
-        //     std::cerr << num_atoms << ' ' << system.num_atoms();
-        // )
 
         run_velocity_verlet(system, benchmark, mpi_comm, ff, opts);
 
         // Do we need to calculate energetics or output the trajectory
         // this step? If so, collect all atoms on the master rank.
-        const auto do_collect_on_master
+        const bool do_collect_on_master
             = do_step(step, opts.energy_calc)
                 || do_step(step, opts.traj_stride);
 
-        // MPI_RANK_PRINT(mpi_comm,
-        //     std::cerr << system.num_atoms();
-        // )
-
-        // TODO: Reenable this.
         if (do_collect_on_master)
         {
-            // mpi_collect_atoms_to_master(system, mpi_comm);
+            mpi_collect_atoms_to_master(system, mpi_comm);
         }
-
-        // MPI_RANK_PRINT(mpi_comm,
-        //     std::cerr << system.num_atoms();
-        // )
 
         benchmark.start_energy_calc_update();
         if (is_master(mpi_comm) && do_step(step, opts.energy_calc))
@@ -240,14 +209,14 @@ int main(int argc, char* argv[])
         }
         benchmark.stop_traj_output_update();
 
-        // DEBUG: Wait for a keypress after each step while debugging
-#ifdef DEBUG_HOLD
+        // Remove atoms from other ranks on master
         if (is_master(mpi_comm))
         {
-            std::cerr << " holding ...";
-            std::cin.get();
+            for (const auto i : mpi_comm.mpi_rank_non_owned_cells.at(0))
+            {
+                system.cell_lists.at(i).resize_atom_list(0);
+            }
         }
-#endif
 
         // TODO: time idle
         MPI_Barrier(MPI_COMM_WORLD);
@@ -272,7 +241,7 @@ int main(int argc, char* argv[])
         std::cerr << '\n';
         print_energetics(energy, ff);
         std::cerr << '\n';
-        print_benchmark(benchmark);
+        print_benchmark(benchmark, opts.num_steps);
 
         auto t = std::time(nullptr);
         std::cerr << "\nFinished simulation at "

@@ -520,47 +520,46 @@ ADD_TEST(test_create_cell_mpi_communication_groups_for_sending,
 
     System system;
 
-    CellList list1 {0, {0.0, 0.0, 0.0}, {1.0, 1.0, 1.0}};
-    CellList list2 {0, {0.0, 1.0, 0.0}, {1.0, 1.0, 1.0}};
-    CellList list3 {0, {1.0, 0.0, 0.0}, {1.0, 1.0, 1.0}};
-    CellList list4 {0, {1.0, 1.0, 0.0}, {1.0, 1.0, 1.0}};
-    CellList list5 {0, {2.0, 0.0, 0.0}, {1.0, 1.0, 1.0}};
-    CellList list6 {0, {2.0, 1.0, 0.0}, {1.0, 1.0, 1.0}};
+    CellList list0 {0, {0.0, 0.0, 0.0}, {1.0, 1.0, 1.0}}; // rank 3 
+    CellList list1 {0, {0.0, 1.0, 0.0}, {1.0, 1.0, 1.0}}; // rank 2 
+    CellList list2 {0, {1.0, 0.0, 0.0}, {1.0, 1.0, 1.0}}; // rank 1 
+    CellList list3 {0, {1.0, 1.0, 0.0}, {1.0, 1.0, 1.0}}; // rank 0 
+    CellList list4 {0, {2.0, 0.0, 0.0}, {1.0, 1.0, 1.0}}; // rank 3 
+    CellList list5 {0, {2.0, 1.0, 0.0}, {1.0, 1.0, 1.0}}; // rank 2 
 
     // Neighbouring cell indices
-    list1.to_neighbours = vector<size_t> { 1, 2 }; // rank 3 -> 2, 1
-    list2.to_neighbours = vector<size_t> { 2, 3 }; // rank 2 -> 1, 0
-    list3.to_neighbours = vector<size_t> { 3, 4 }; // rank 1 -> 0, 3
-    list4.to_neighbours = vector<size_t> { 4, 5 }; // rank 0 -> 3, 2
-    list5.to_neighbours = vector<size_t> { 5, 0 }; // rank 3 -> 2, 3
-    list6.to_neighbours = vector<size_t> { 0, 1 }; // rank 2 -> 3, 2
+    list0.to_neighbours = vector<size_t> { 1, 2 };
+    list1.to_neighbours = vector<size_t> { 2, 3 };
+    list2.to_neighbours = vector<size_t> { 3, 4 };
+    list3.to_neighbours = vector<size_t> { 4, 5 };
+    list4.to_neighbours = vector<size_t> { 5, 0 };
+    list5.to_neighbours = vector<size_t> { 0, 1 };
 
+    system.cell_lists.push_back(list0);
     system.cell_lists.push_back(list1);
     system.cell_lists.push_back(list2);
     system.cell_lists.push_back(list3);
     system.cell_lists.push_back(list4);
     system.cell_lists.push_back(list5);
-    system.cell_lists.push_back(list6);
 
     // The comm group will contain the ranks of the neighbouring cells
     // and the parent cell
-    const vector<int> ranks_cell1 { 3, 2, 1 };
-    const vector<int> ranks_cell2 { 2, 1, 0 };
-    const vector<int> ranks_cell3 { 1, 0, 3 };
-    const vector<int> ranks_cell4 { 0, 3, 2 };
+    const vector<int> ranks_cell0 { 3, 2 }; // cells 4, 5
+    const vector<int> ranks_cell1 { 2, 3 }; // cells 5, 0
+    const vector<int> ranks_cell2 { 1, 3, 2 }; // cells 0, 1
+    const vector<int> ranks_cell3 { 0, 2, 1 }; // cells 1, 2
+    const vector<int> ranks_cell4 { 3, 1, 0 }; // cells 2, 3
+    const vector<int> ranks_cell5 { 2, 0, 3 }; // cells 3, 4
 
-    // These two cells have double members (their neighbours include their
-    // parent rank), which are removed
-    const vector<int> ranks_cell5 { 3, 2 };
-    const vector<int> ranks_cell6 { 2, 3 };
-
-    MPI_Group expected_group1, expected_group2, expected_group3,
-              expected_group4, expected_group5, expected_group6,
-              group1, group2, group3, group4, group5, group6,
+    MPI_Group expected_group0, expected_group1, expected_group2,
+              expected_group3, expected_group4, expected_group5,
+              group0, group1, group2, group3, group4, group5,
               world_group;
     MPI_Comm_group(MPI_COMM_WORLD, &world_group);
 
     // To test the results, we create the expected groups manually
+    MPI_Group_incl(world_group, ranks_cell0.size(), ranks_cell0.data(),
+        &expected_group0);
     MPI_Group_incl(world_group, ranks_cell1.size(), ranks_cell1.data(),
         &expected_group1);
     MPI_Group_incl(world_group, ranks_cell2.size(), ranks_cell2.data(),
@@ -571,162 +570,185 @@ ADD_TEST(test_create_cell_mpi_communication_groups_for_sending,
         &expected_group4);
     MPI_Group_incl(world_group, ranks_cell5.size(), ranks_cell5.data(),
         &expected_group5);
-    MPI_Group_incl(world_group, ranks_cell6.size(), ranks_cell6.data(),
-        &expected_group6);
 
     // Now extract them from the MPI_Comm records in the result and compare
     int result = MPI_UNEQUAL, cell_comm_root = -1;
+    MPI_RANK_PRINT(mpi_comm, std::cerr << "hello"; )
     mpi_create_cell_comm_groups(mpi_comm, system.cell_lists);
+    MPI_RANK_PRINT(mpi_comm, std::cerr << "mid"; )
+
+
     const auto& comm_groups = mpi_comm.cell_comm_groups;
+    MPI_RANK_PRINT(mpi_comm, std::cerr << "bye"; )
 
     // Use the (known) ranks for each cell to check the groups
     // Owner: 3
     if (is_rank(3, mpi_comm) || is_rank(2, mpi_comm) || is_rank(1, mpi_comm))
     {
-        // Get the group from the created MPI_Comm record
-        MPI_Comm_group(comm_groups[0].comm, &group1);
+        // // Ensure that the sending ranks match those recorded.
+        set<size_t> to_ranks_expected(ranks_cell0.cbegin(), ranks_cell0.cend());
+        MPI_VEC_PRINT(mpi_comm, to_ranks_expected);
+        to_ranks_expected.erase(3); // delete current rank
+        MPI_VEC_PRINT(mpi_comm, to_ranks_expected);
 
-        // Compare the group to the expected result.
-        MPI_Group_compare(group1, expected_group1, &result);
-
-        // Ensure that they are not unequal.
-        ASSERT(static_cast<bool>(result != MPI_UNEQUAL),
-               "cell 0 does not have the correct ranks in the comm group");
-
-        // Ensure that the sending ranks match those recorded.
-        const set<size_t> to_ranks_expected { 2, 1 };
         const set<size_t> to_ranks(
             comm_groups[0].to_ranks.cbegin(), comm_groups[0].to_ranks.cend()
         );
 
+        MPI_VEC_PRINT(mpi_comm, to_ranks_expected);
         ASSERT_EQ_VEC(to_ranks, to_ranks_expected,
                       "cell 0 does not have the correct to_ranks list");
 
-        // Check that the root corresponds to the owning rank in MPI_COMM_WORLD:
-        // get the number by translating from MPI_COMM_WORLD to the group comm.
-        const int owner = 3;
-        MPI_Group_translate_ranks(world_group, 1, &owner,
-            group1, &cell_comm_root);
+        // Get the group from the created MPI_Comm record
+        MPI_Comm_group(comm_groups[0].comm, &group0);
 
-        ASSERT_EQ(cell_comm_root, comm_groups[0].root,
-            "cell 0 does not have the correct root handle");
+        // // Compare the group to the expected result.
+        // MPI_Group_compare(group0, expected_group0, &result);
+
+        // // Ensure that they are not unequal.
+        // ASSERT(static_cast<bool>(result != MPI_UNEQUAL),
+        //        "cell 0 does not have the correct ranks in the comm group");
+
+        // // Check that the root corresponds to the owning rank in MPI_COMM_WORLD:
+        // // get the number by translating from MPI_COMM_WORLD to the group comm.
+        // const int parent = 3;
+        // MPI_Group_translate_ranks(world_group, 1, &parent,
+        //     group0, &cell_comm_root);
+
+        // ASSERT_EQ(cell_comm_root, comm_groups[0].root,
+        //     "cell 0 does not have the correct root handle");
     }
 
-    // Owner: 2
-    if (is_rank(2, mpi_comm) || is_rank(1, mpi_comm) || is_rank(0, mpi_comm))
-    {
-        MPI_Comm_group(comm_groups[1].comm, &group2);
-        MPI_Group_compare(group2, expected_group2, &result);
-        ASSERT(static_cast<bool>(result != MPI_UNEQUAL),
-               "cell 1 does not have the correct ranks in the comm group");
+    // // Owner: 2
+    // if (is_rank(2, mpi_comm) || is_rank(1, mpi_comm) || is_rank(0, mpi_comm))
+    // {
+    //     set<size_t> to_ranks_expected(ranks_cell1.cbegin(), ranks_cell1.cend());
+    //     to_ranks_expected.erase(2); // delete current rank
 
-        const set<size_t> to_ranks_expected { 1, 0 };
-        const set<size_t> to_ranks(
-            comm_groups[1].to_ranks.cbegin(), comm_groups[1].to_ranks.cend()
-        );
-        ASSERT_EQ_VEC(to_ranks, to_ranks_expected,
-                      "cell 1 does not have the correct to_ranks list");
+    //     const set<size_t> to_ranks(
+    //         comm_groups[1].to_ranks.cbegin(), comm_groups[1].to_ranks.cend()
 
-        const int owner = 2;
-        MPI_Group_translate_ranks(world_group, 1, &owner,
-            group2, &cell_comm_root);
+    //     );
+    //     ASSERT_EQ_VEC(to_ranks, to_ranks_expected,
+    //                   "cell 1 does not have the correct to_ranks list");
 
-        ASSERT_EQ(cell_comm_root, comm_groups[1].root,
-            "cell 1 does not have the correct root handle");
-    }
+    //     MPI_Comm_group(comm_groups[1].comm, &group1);
+    //     MPI_Group_compare(group1, expected_group1, &result);
+    //     ASSERT(static_cast<bool>(result != MPI_UNEQUAL),
+    //            "cell 1 does not have the correct ranks in the comm group");
 
-    // Owner: 1
-    if (is_rank(1, mpi_comm) || is_rank(0, mpi_comm) || is_rank(3, mpi_comm))
-    {
-        MPI_Comm_group(comm_groups[2].comm, &group3);
-        MPI_Group_compare(group3, expected_group3, &result);
-        ASSERT(static_cast<bool>(result != MPI_UNEQUAL),
-               "cell 2 does not have the correct ranks in the comm group");
+    //     const int parent = 2;
+    //     MPI_Group_translate_ranks(world_group, 1, &parent,
+    //         group1, &cell_comm_root);
 
-        // Ensure that the sending ranks match those recorded.
-        const set<size_t> to_ranks_expected { 0, 3 };
-        const set<size_t> to_ranks(
-            comm_groups[2].to_ranks.cbegin(), comm_groups[2].to_ranks.cend()
-        );
-        ASSERT_EQ_VEC(to_ranks, to_ranks_expected,
-                      "cell 2 does not have the correct to_ranks list");
+    //     ASSERT_EQ(cell_comm_root, comm_groups[1].root,
+    //         "cell 1 does not have the correct root handle");
+    // }
 
-        const int owner = 1;
-        MPI_Group_translate_ranks(world_group, 1, &owner,
-            group3, &cell_comm_root);
+    // // Owner: 1
+    // if (is_rank(1, mpi_comm) || is_rank(0, mpi_comm) || is_rank(3, mpi_comm))
+    // {
+    //     // Ensure that the sending ranks match those recorded.
+    //     set<size_t> to_ranks_expected(ranks_cell2.cbegin(), ranks_cell2.cend());
+    //     to_ranks_expected.erase(1); // delete current rank
 
-        ASSERT_EQ(cell_comm_root, comm_groups[2].root,
-            "cell 2 does not have the correct root handle");
-    }
+    //     const set<size_t> to_ranks(
+    //         comm_groups[2].to_ranks.cbegin(), comm_groups[2].to_ranks.cend()
+    //     );
 
-    // Owner: 0
-    if (is_rank(0, mpi_comm) || is_rank(3, mpi_comm) || is_rank(2, mpi_comm))
-    {
-        MPI_Comm_group(comm_groups[3].comm, &group4);
-        MPI_Group_compare(group4, expected_group4, &result);
-        ASSERT(static_cast<bool>(result != MPI_UNEQUAL),
-               "cell 3 does not have the correct ranks in the comm group");
+    //     ASSERT_EQ_VEC(to_ranks, to_ranks_expected,
+    //                   "cell 2 does not have the correct to_ranks list");
 
-        const set<size_t> to_ranks_expected { 3, 2 };
-        const set<size_t> to_ranks(
-            comm_groups[3].to_ranks.cbegin(), comm_groups[3].to_ranks.cend()
-        );
-        ASSERT_EQ_VEC(to_ranks, to_ranks_expected,
-                      "cell 3 does not have the correct to_ranks list");
+    //     MPI_Comm_group(comm_groups[2].comm, &group2);
+    //     MPI_Group_compare(group2, expected_group2, &result);
+    //     ASSERT(static_cast<bool>(result != MPI_UNEQUAL),
+    //            "cell 2 does not have the correct ranks in the comm group");
 
-        const int owner = 0;
-        MPI_Group_translate_ranks(world_group, 1, &owner,
-            group4, &cell_comm_root);
+    //     const int parent = 1;
+    //     MPI_Group_translate_ranks(world_group, 1, &parent,
+    //         group2, &cell_comm_root);
 
-        ASSERT_EQ(cell_comm_root, comm_groups[3].root,
-            "cell 3 does not have the correct root handle");
-    }
+    //     ASSERT_EQ(cell_comm_root, comm_groups[2].root,
+    //         "cell 2 does not have the correct root handle");
+    // }
 
-    // Owner: 3
-    if (is_rank(3, mpi_comm) || is_rank(2, mpi_comm))
-    {
-        MPI_Comm_group(comm_groups[4].comm, &group5);
-        MPI_Group_compare(group5, expected_group5, &result);
-        ASSERT(static_cast<bool>(result != MPI_UNEQUAL),
-               "cell 4 does not have the correct ranks in the comm group");
+    // // Owner: 0
+    // if (is_rank(0, mpi_comm) || is_rank(3, mpi_comm) || is_rank(2, mpi_comm))
+    // {
+    //     set<size_t> to_ranks_expected(ranks_cell3.cbegin(), ranks_cell3.cend());
+    //     to_ranks_expected.erase(0); // delete current rank
 
-        const set<size_t> to_ranks_expected { 2 };
-        const set<size_t> to_ranks(
-            comm_groups[4].to_ranks.cbegin(), comm_groups[4].to_ranks.cend()
-        );
-        ASSERT_EQ_VEC(to_ranks, to_ranks_expected,
-                      "cell 4 does not have the correct to_ranks list");
+    //     const set<size_t> to_ranks(
+    //         comm_groups[3].to_ranks.cbegin(), comm_groups[3].to_ranks.cend()
+    //     );
 
-        const int owner = 3;
-        MPI_Group_translate_ranks(world_group, 1, &owner,
-            group5, &cell_comm_root);
+    //     ASSERT_EQ_VEC(to_ranks, to_ranks_expected,
+    //                   "cell 3 does not have the correct to_ranks list");
 
-        ASSERT_EQ(cell_comm_root, comm_groups[4].root,
-            "cell 4 does not have the correct root handle");
-    }
+    //     MPI_Comm_group(comm_groups[3].comm, &group3);
+    //     MPI_Group_compare(group3, expected_group3, &result);
+    //     ASSERT(static_cast<bool>(result != MPI_UNEQUAL),
+    //            "cell 3 does not have the correct ranks in the comm group");
 
-    // Owner: 2
-    if (is_rank(2, mpi_comm) || is_rank(3, mpi_comm))
-    {
-        MPI_Comm_group(comm_groups[5].comm, &group6);
-        MPI_Group_compare(group6, expected_group6, &result);
-        ASSERT(static_cast<bool>(result != MPI_UNEQUAL),
-               "cell 5 does not have the correct ranks in the comm group");
+    //     const int parent = 0;
+    //     MPI_Group_translate_ranks(world_group, 1, &parent,
+    //         group3, &cell_comm_root);
 
-        const set<size_t> to_ranks_expected { 3 };
-        const set<size_t> to_ranks(
-            comm_groups[5].to_ranks.cbegin(), comm_groups[5].to_ranks.cend()
-        );
-        ASSERT_EQ_VEC(to_ranks, to_ranks_expected,
-                      "cell 5 does not have the correct to_ranks list");
+    //     ASSERT_EQ(cell_comm_root, comm_groups[3].root,
+    //         "cell 3 does not have the correct root handle");
+    // }
 
-        const int owner = 2;
-        MPI_Group_translate_ranks(world_group, 1, &owner,
-            group6, &cell_comm_root);
+    // // Owner: 3
+    // if (is_rank(3, mpi_comm) || is_rank(2, mpi_comm))
+    // {
+    //     set<size_t> to_ranks_expected(ranks_cell4.cbegin(), ranks_cell4.cend());
+    //     to_ranks_expected.erase(3); // delete current rank
 
-        ASSERT_EQ(cell_comm_root, comm_groups[5].root,
-            "cell 5 does not have the correct root handle");
-    }
+    //     const set<size_t> to_ranks(
+    //         comm_groups[4].to_ranks.cbegin(), comm_groups[4].to_ranks.cend()
+    //     );
+
+    //     ASSERT_EQ_VEC(to_ranks, to_ranks_expected,
+    //                   "cell 4 does not have the correct to_ranks list");
+
+    //     MPI_Comm_group(comm_groups[4].comm, &group4);
+    //     MPI_Group_compare(group4, expected_group4, &result);
+    //     ASSERT(static_cast<bool>(result != MPI_UNEQUAL),
+    //            "cell 4 does not have the correct ranks in the comm group");
+
+    //     const int parent = 3;
+    //     MPI_Group_translate_ranks(world_group, 1, &parent,
+    //         group4, &cell_comm_root);
+
+    //     ASSERT_EQ(cell_comm_root, comm_groups[4].root,
+    //         "cell 4 does not have the correct root handle");
+    // }
+
+    // // Owner: 2
+    // if (is_rank(2, mpi_comm) || is_rank(3, mpi_comm))
+    // {
+    //     set<size_t> to_ranks_expected(ranks_cell5.cbegin(), ranks_cell5.cend());
+    //     to_ranks_expected.erase(2); // delete current rank
+
+    //     const set<size_t> to_ranks(
+    //         comm_groups[5].to_ranks.cbegin(), comm_groups[5].to_ranks.cend()
+    //     );
+
+    //     ASSERT_EQ_VEC(to_ranks, to_ranks_expected,
+    //                   "cell 5 does not have the correct to_ranks list");
+
+    //     MPI_Comm_group(comm_groups[5].comm, &group5);
+    //     MPI_Group_compare(group5, expected_group5, &result);
+    //     ASSERT(static_cast<bool>(result != MPI_UNEQUAL),
+    //            "cell 5 does not have the correct ranks in the comm group");
+
+    //     const int parent = 2;
+    //     MPI_Group_translate_ranks(world_group, 1, &parent,
+    //         group5, &cell_comm_root);
+
+    //     ASSERT_EQ(cell_comm_root, comm_groups[5].root,
+    //         "cell 5 does not have the correct root handle");
+    // }
 
     MPI_Group_free(&world_group);
 )
@@ -735,25 +757,26 @@ ADD_TEST(test_create_record_of_which_cells_every_rank_will_receive,
     MPIRank mpi_comm;
     init_MPI(mpi_comm);
 
+    // 6 cells
     // 4 ranks with a few cells each
     mpi_comm.cell_parent_mpi_ranks = vector<size_t> { 3, 2, 1, 0, 3, 2 };
 
     System system;
 
-    CellList list0 {0, {0.0, 0.0, 0.0}, {1.0, 1.0, 1.0}};
-    CellList list1 {0, {0.0, 1.0, 0.0}, {1.0, 1.0, 1.0}};
-    CellList list2 {0, {1.0, 0.0, 0.0}, {1.0, 1.0, 1.0}};
-    CellList list3 {0, {1.0, 1.0, 0.0}, {1.0, 1.0, 1.0}};
-    CellList list4 {0, {2.0, 0.0, 0.0}, {1.0, 1.0, 1.0}};
-    CellList list5 {0, {2.0, 1.0, 0.0}, {1.0, 1.0, 1.0}};
+    CellList list0 {0, {0.0, 0.0, 0.0}, {1.0, 1.0, 1.0}}; // rank 3 (parent)
+    CellList list1 {0, {0.0, 1.0, 0.0}, {1.0, 1.0, 1.0}}; // rank 2
+    CellList list2 {0, {1.0, 0.0, 0.0}, {1.0, 1.0, 1.0}}; // rank 1
+    CellList list3 {0, {1.0, 1.0, 0.0}, {1.0, 1.0, 1.0}}; // rank 0
+    CellList list4 {0, {2.0, 0.0, 0.0}, {1.0, 1.0, 1.0}}; // rank 3 
+    CellList list5 {0, {2.0, 1.0, 0.0}, {1.0, 1.0, 1.0}}; // rank 2
 
     // Neighbouring cell indices
-    list0.to_neighbours = vector<size_t> { 1, 2 }; // rank 3 -> 2, 1
-    list1.to_neighbours = vector<size_t> { 2, 3 }; // rank 2 -> 1, 0
-    list2.to_neighbours = vector<size_t> { 3, 4 }; // rank 1 -> 0, 3
-    list3.to_neighbours = vector<size_t> { 4, 5 }; // rank 0 -> 3, 2
-    list4.to_neighbours = vector<size_t> { 5, 0 }; // rank 3 -> 2, 3
-    list5.to_neighbours = vector<size_t> { 0, 1 }; // rank 2 -> 3, 2
+    list0.to_neighbours = vector<size_t> { 1, 2 }; // rank 3 
+    list1.to_neighbours = vector<size_t> { 2, 3 }; // rank 2 
+    list2.to_neighbours = vector<size_t> { 3, 4 }; // rank 1 
+    list3.to_neighbours = vector<size_t> { 4, 5 }; // rank 0 
+    list4.to_neighbours = vector<size_t> { 5, 0 }; // rank 3 
+    list5.to_neighbours = vector<size_t> { 0, 1 }; // rank 2 
 
     system.cell_lists.push_back(list0);
     system.cell_lists.push_back(list1);
@@ -763,14 +786,14 @@ ADD_TEST(test_create_record_of_which_cells_every_rank_will_receive,
     system.cell_lists.push_back(list5);
 
     // The ranks will be receiving these cells, based on the to_neighbours list
-    const set<size_t> rank0_expects { 1, 2 };
-    const set<size_t> rank1_expects { 0, 1 };
+    const set<size_t> rank0_expects { 4, 5 };
+    const set<size_t> rank1_expects { 3, 4 };
 
-    // cell no. 5 removed, since it is owned by the rank
-    const set<size_t> rank2_expects { 0, 3, 4 };
+    // cell no. 1 removed, since it is owned by the rank
+    const set<size_t> rank2_expects { 0, 2, 3 };
 
-    // cell no. 4 removed, since it is owned by the rank
-    const set<size_t> rank3_expects { 2, 3, 5 };
+    // cell no. 0 removed, since it is owned by the rank
+    const set<size_t> rank3_expects { 1, 2, 5 };
 
     mpi_create_sending_and_receiving_cell_lists_for_ranks(
         mpi_comm, system.cell_lists
@@ -800,25 +823,26 @@ ADD_TEST(test_create_record_of_which_cells_every_rank_will_send,
     MPIRank mpi_comm;
     init_MPI(mpi_comm);
 
-    // 4 ranks with a few cells each
-    mpi_comm.cell_parent_mpi_ranks = vector<size_t> { 0, 0, 0, 1, 1, 1 };
+    // 6 cells
+    // 4 ranks
+    mpi_comm.cell_parent_mpi_ranks = vector<size_t> { 3, 3, 3, 2, 1, 0 };
 
     System system;
 
-    CellList list0 {0, {0.0, 0.0, 0.0}, {1.0, 1.0, 1.0}};
-    CellList list1 {0, {0.0, 1.0, 0.0}, {1.0, 1.0, 1.0}};
-    CellList list2 {0, {1.0, 0.0, 0.0}, {1.0, 1.0, 1.0}};
-    CellList list3 {0, {1.0, 1.0, 0.0}, {1.0, 1.0, 1.0}};
-    CellList list4 {0, {2.0, 0.0, 0.0}, {1.0, 1.0, 1.0}};
-    CellList list5 {0, {2.0, 1.0, 0.0}, {1.0, 1.0, 1.0}};
+    CellList list0 {0, {0.0, 0.0, 0.0}, {1.0, 1.0, 1.0}}; // rank 3 (parent)
+    CellList list1 {0, {0.0, 1.0, 0.0}, {1.0, 1.0, 1.0}}; // rank 3
+    CellList list2 {0, {1.0, 0.0, 0.0}, {1.0, 1.0, 1.0}}; // rank 3
+    CellList list3 {0, {1.0, 1.0, 0.0}, {1.0, 1.0, 1.0}}; // rank 2
+    CellList list4 {0, {2.0, 0.0, 0.0}, {1.0, 1.0, 1.0}}; // rank 1 
+    CellList list5 {0, {2.0, 1.0, 0.0}, {1.0, 1.0, 1.0}}; // rank 0
 
     // Neighbouring cell indices
-    list0.to_neighbours = vector<size_t> { 1, 2 }; // rank 0 -> 0, 0 (no send)
-    list1.to_neighbours = vector<size_t> { 2, 3 }; // rank 0 -> 0, 1 (send)
-    list2.to_neighbours = vector<size_t> { 3, 4 }; // rank 0 -> 1, 1 (send)
-    list3.to_neighbours = vector<size_t> { 4, 5 }; // rank 1 -> 1, 1 (no send)
-    list4.to_neighbours = vector<size_t> { 5, 0 }; // rank 1 -> 1, 0 (send)
-    list5.to_neighbours = vector<size_t> { 0, 1 }; // rank 1 -> 0, 0 (send)
+    list0.to_neighbours = vector<size_t> { 1, 2 }; // rank 3 <- 1, 2
+    list1.to_neighbours = vector<size_t> { 2, 3 }; // rank 3 <- 2, 3
+    list2.to_neighbours = vector<size_t> { 3, 4 }; // rank 3 <- 3, 4
+    list3.to_neighbours = vector<size_t> { 4, 5 }; // rank 2 <- 4, 5
+    list4.to_neighbours = vector<size_t> { 5, 0 }; // rank 1 <- 5, 0
+    list5.to_neighbours = vector<size_t> { 0, 1 }; // rank 0 <- 0, 1
 
     system.cell_lists.push_back(list0);
     system.cell_lists.push_back(list1);
@@ -828,12 +852,15 @@ ADD_TEST(test_create_record_of_which_cells_every_rank_will_send,
     system.cell_lists.push_back(list5);
 
     // The ranks will be sending these cells, based on the to_neighbours list
-    const set<size_t> rank0_expects { 1, 2 };
-    const set<size_t> rank1_expects { 4, 5 };
+    const set<size_t> rank0_expects { 5 }; // cell 5 needed by cells 0, 1 (ranks 0, 0)
+    const set<size_t> rank1_expects { 4 }; // cell 4 needed by cells 0, 5 (ranks 3, 0)
+    const set<size_t> rank2_expects { 3 }; // cell 3 needed by cells 4, 5 (ranks 1, 0)
 
-    // These ranks will not be sending any cells
-    const set<size_t> rank2_expects { };
-    const set<size_t> rank3_expects { };
+    const set<size_t> rank3_expects { 
+        0, // cell 0 needed by cells 4, 5 (ranks 1, 0)
+        1, // cell 1 needed by cells 0, 5 (ranks 0, 3) 
+        // 2, cell 2 needed by cells 0, 1 (ranks 3, 3) 
+    };  
 
     // mpi_create_sending_cell_lists_for_ranks(mpi_comm, system.cell_lists);
     mpi_create_sending_and_receiving_cell_lists_for_ranks(
@@ -877,21 +904,21 @@ ADD_TEST(test_sending_and_receiving_cell_lists_are_consistent,
     CellList list5 {0, {2.0, 1.0, 0.0}, {1.0, 1.0, 1.0}};
 
     // Neighbouring cell indices
-    list0.to_neighbours = vector<size_t> { 1, 2 }; // rank 3 -> 2, 1
-    list1.to_neighbours = vector<size_t> { 2, 3 }; // rank 2 -> 1, 0
-    list2.to_neighbours = vector<size_t> { 3, 4 }; // rank 1 -> 0, 3
-    list3.to_neighbours = vector<size_t> { 4, 5 }; // rank 0 -> 3, 2
-    list4.to_neighbours = vector<size_t> { 5, 0 }; // rank 3 -> 2, 3
-    list5.to_neighbours = vector<size_t> { 0, 1 }; // rank 2 -> 3, 2
+    list0.to_neighbours = vector<size_t> { 1, 2 };
+    list1.to_neighbours = vector<size_t> { 2, 3 };
+    list2.to_neighbours = vector<size_t> { 3, 4 };
+    list3.to_neighbours = vector<size_t> { 4, 5 };
+    list4.to_neighbours = vector<size_t> { 5, 0 };
+    list5.to_neighbours = vector<size_t> { 0, 1 };
 
     // And their corresponding parent ranks
     vector<vector<size_t>> to_neighbour_ranks {
-        vector<size_t> { 2, 1 },
-        vector<size_t> { 1, 0 },
-        vector<size_t> { 0, 3 },
-        vector<size_t> { 3, 2 },
-        vector<size_t> { 2 },
-        vector<size_t> { 3 }
+        vector<size_t> { 2 }, // cells 4, 5, rank 3
+        vector<size_t> { 3 }, // cells 0, 5, rank 2
+        vector<size_t> { 3, 2 }, // cells 0, 1, rank 1
+        vector<size_t> { 2, 1 }, // cells 1, 2, rank 0
+        vector<size_t> { 1, 0 }, // cells 2, 3, rank 3
+        vector<size_t> { 0, 3 }  // cells 3, 4, rank 2
     };
 
     system.cell_lists.push_back(list0);
@@ -1120,10 +1147,13 @@ ADD_TEST(test_sync_num_of_transmitted_positions,
         mpi_comm, system.cell_lists
     );
 
+    std::cerr << "HELLO\n" << std::flush;
+
     // Get the number of positions to receive per cell
     const auto num_recv_per_cell = mpi_sync_number_of_transmitted_atoms(
         system.cell_lists, mpi_comm
     );
+
 
     // Assert that we have the correct number for every rank
     // Rank 0 receives cell1 from rank 2
@@ -2292,6 +2322,14 @@ ADD_TEST(test_init_mpi_sets_comm_record_to_all_ranks,
     ASSERT_EQ(result, MPI_IDENT, "init_MPI does not set the communication record to MPI_COMM_WORLD");
 )
 
+#define WAITABIT(STRING) { \
+    if (mpi_comm.rank == 0) \
+    { \
+        std::cerr << "*** " << STRING << " ***\n"; \
+    } \
+    MPI_Barrier(MPI_COMM_WORLD); \
+}
+
 RUN_TESTS_MPI_ALL(
     // MPI setup
     test_init_mpi_sets_comm_record_to_all_ranks();
@@ -2309,24 +2347,36 @@ RUN_TESTS_MPI_ALL(
 
     // Creation of MPI required data and records
     test_create_all_cells_for_all_mpi_ranks_with_correct_fields();
-    test_create_cell_mpi_communication_groups_for_sending();
+    WAITABIT("ONE");
+    // test_create_cell_mpi_communication_groups_for_sending();
+    WAITABIT("TWO");
     test_create_record_of_which_cells_every_rank_will_receive();
     test_create_record_of_which_cells_every_rank_will_send();
     test_sending_and_receiving_cell_lists_are_consistent();
     test_fill_in_communicators_and_sendrecv_cell_lists();
 
     // Syncing of data between threads
+    WAITABIT("THREE");
     test_sync_num_of_transmitted_positions();
     test_reserve_memory_for_recv_cell_lists_positions_and_forces();
+    WAITABIT("FOUR");
     test_transmitting_a_few_atom_positions_works();
+    WAITABIT("FIVE");
     test_transmitting_positions_erases_old_data_on_receivers();
+    WAITABIT("SIX");
     test_transmitting_empty_cells_erases_cell_data();
+    WAITABIT("SEVEN");
     test_collect_forces_from_transmitted_cell_lists();
+    WAITABIT("EIGHT");
     test_get_cells_to_transmit_to_other_ranks();
+    WAITABIT("NINE");
     test_sync_num_of_cells_to_receive_from_other_ranks();
+    WAITABIT("TEN");
     test_move_atoms_to_new_owning_ranks();
+    WAITABIT("ELEVEN");
     test_collect_all_data_on_master_rank();
 
     // Misc
+    WAITABIT("final");
     test_reset_received_cells();
 )

@@ -22,8 +22,6 @@ void describe_system_config(const System& system, const ForceField& ff)
                 << system.shape[YY] << " x "
                 << system.shape[ZZ] << '\n'
               << '\n';
-
-    show_atom_cell_list_distribution(system);
 }
 
 void show_atom_cell_list_distribution(const System& system)
@@ -102,6 +100,21 @@ void Benchmark::start_traj_output_update(void)
     traj_output_start = std::chrono::system_clock::now();
 }
 
+void Benchmark::start_mpi_send_positions_update(void)
+{
+    mpi_send_positions_start = std::chrono::system_clock::now();
+}
+
+void Benchmark::start_mpi_send_forces_update(void)
+{
+    mpi_send_forces_start = std::chrono::system_clock::now();
+}
+
+void Benchmark::start_mpi_clean_update(void)
+{
+    mpi_clean_start = std::chrono::system_clock::now();
+}
+
 void Benchmark::stop_cell_list_update(void)
 {
     cell_list_update += std::chrono::system_clock::now() - cell_list_start;
@@ -135,6 +148,21 @@ void Benchmark::stop_energy_calc_update(void)
 void Benchmark::stop_traj_output_update(void)
 {
     traj_output_update += std::chrono::system_clock::now() - traj_output_start;
+}
+
+void Benchmark::stop_mpi_send_positions_update(void)
+{
+    mpi_send_positions_update += std::chrono::system_clock::now() - mpi_send_positions_start;
+}
+
+void Benchmark::stop_mpi_send_forces_update(void)
+{
+    mpi_send_forces_update += std::chrono::system_clock::now() - mpi_send_forces_start;
+}
+
+void Benchmark::stop_mpi_clean_update(void)
+{
+    mpi_clean_update += std::chrono::system_clock::now() - mpi_clean_start;
 }
 
 namespace bench_lines {
@@ -181,7 +209,7 @@ static void print_a_timing(const std::string name,
         << '\n';
 }
 
-void print_benchmark(const Benchmark& bench)
+void print_benchmark(const Benchmark& bench, const uint64_t num_steps)
 {
     using namespace bench_lines;
     const auto linebreaker = std::string(line_length, '-') + '\n';
@@ -206,14 +234,36 @@ void print_benchmark(const Benchmark& bench)
                    bench.energy_calc_update, bench.simulation_total);
     print_a_timing("Trajectory writing",
                    bench.traj_output_update, bench.simulation_total);
+    print_a_timing("MPI send positions",
+                   bench.mpi_send_positions_update, bench.simulation_total);
+    print_a_timing("MPI send forces",
+                   bench.mpi_send_forces_update, bench.simulation_total);
+    print_a_timing("MPI clean-up",
+                   bench.mpi_clean_update, bench.simulation_total);
     print_a_timing("Rest",
                    bench.rest, bench.simulation_total);
+    
+    const auto total_wall_time = calc_seconds(bench.simulation_total);
+    const auto steps_per_minute = static_cast<uint32_t>(
+        60.0 * static_cast<double>(num_steps) / total_wall_time);
 
     std::cerr << linebreaker
         << std::setw(name_length) << std::left << "Total walltime"
         << std::setw(time_length + sep_length)
         << std::right << std::setprecision(1) << std::fixed
-        << calc_seconds(bench.simulation_total) << '\n';
+        << total_wall_time << '\n';
+
+    std::cerr
+        << std::setw(name_length) << std::left << "Time per 1000 steps"
+        << std::setw(time_length + sep_length)
+        << std::right << std::setprecision(1) << std::fixed
+        << total_wall_time * 1000 / num_steps << '\n';
+
+    std::cerr
+        << std::setw(name_length) << std::left << "Steps per minute"
+        << std::setw(time_length + sep_length)
+        << std::right << std::fixed
+        << steps_per_minute << '\n';
 }
 
 RVec calc_mean_velocity(const System& system)
@@ -326,12 +376,27 @@ static double calc_system_potential_energy(const System& system,
     return Epot;
 }
 
+void init_system_energetics(Energetics &energetics)
+{
+    energetics.last_time = std::chrono::system_clock::now();
+}
+
+static double calc_time_since_last(const ChronoTime last_time)
+{
+    const std::chrono::duration<double> dt = std::chrono::system_clock::now() - last_time;
+
+    return calc_seconds(dt);
+}
+
 void calculate_system_energetics(Energetics& energy,
                                  const System& system,
                                  const ForceField& ff)
 {
     energy.potential.push_back(calc_system_potential_energy(system, ff));
     energy.temperature.push_back(calc_system_temperature(system));
+    energy.times_per_calc.push_back(calc_time_since_last(energy.last_time));
+
+    energy.last_time = std::chrono::system_clock::now();
 }
 
 namespace energy_lines {
@@ -436,5 +501,14 @@ void print_energetics(const Energetics& energy, const ForceField& ff)
         convert_temp_to_SI(mean_T, ff),
         convert_temp_to_SI(stdev_T, ff),
         "K"
+    );
+
+    const auto mean_time = calc_mean(energy.times_per_calc);
+    const auto stdev_time = calc_stdev(energy.times_per_calc, mean_time);
+    print_an_energy(
+        "Time per step",
+        mean_time,
+        stdev_time,
+        "ms"
     );
 }

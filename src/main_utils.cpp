@@ -65,6 +65,15 @@ static ParseResult parse_argument(const Iterator it,
 
         return ParseResult::Advance;
     }
+    else if (argument == "t")
+    {
+        if (!parse_string_from_next(it, it_end, input_args.traj_file))
+        {
+            return ParseResult::Error;
+        }
+
+        return ParseResult::Advance;
+    }
     else if (argument == "v")
     {
         input_args.verbose = true;

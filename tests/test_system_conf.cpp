@@ -308,21 +308,21 @@ ADD_TEST(test_split_system_puts_atoms_in_correct_lists,
 
     // Ensure that we use the correct amount of memory
     ASSERT_EQ(system.cell_lists[0].xs.size(), system.cell_lists[0].xs.capacity(),
-        "after readding the atoms the reserved memory has not been minimized");
+        "after reading the atoms the reserved memory has not been minimized");
     ASSERT_EQ(system.cell_lists[0].vs.size(), system.cell_lists[0].vs.capacity(),
-        "after readding the atoms the reserved memory has not been minimized");
+        "after reading the atoms the reserved memory has not been minimized");
     ASSERT_EQ(system.cell_lists[0].fs.size(), system.cell_lists[0].fs.capacity(),
-        "after readding the atoms the reserved memory has not been minimized");
+        "after reading the atoms the reserved memory has not been minimized");
     ASSERT_EQ(system.cell_lists[0].fs_prev.size(), system.cell_lists[0].fs_prev.capacity(),
-        "after readding the atoms the reserved memory has not been minimized");
+        "after reading the atoms the reserved memory has not been minimized");
     ASSERT_EQ(system.cell_lists[1].xs.size(), system.cell_lists[1].xs.capacity(),
-        "after readding the atoms the reserved memory has not been minimized");
+        "after reading the atoms the reserved memory has not been minimized");
     ASSERT_EQ(system.cell_lists[1].vs.size(), system.cell_lists[1].vs.capacity(),
-        "after readding the atoms the reserved memory has not been minimized");
+        "after reading the atoms the reserved memory has not been minimized");
     ASSERT_EQ(system.cell_lists[1].fs.size(), system.cell_lists[1].fs.capacity(),
-        "after readding the atoms the reserved memory has not been minimized");
+        "after reading the atoms the reserved memory has not been minimized");
     ASSERT_EQ(system.cell_lists[1].fs_prev.size(), system.cell_lists[1].fs_prev.capacity(),
-        "after readding the atoms the reserved memory has not been minimized");
+        "after reading the atoms the reserved memory has not been minimized");
 )
 
 ADD_TEST(test_update_cell_lists_moves_positions_and_velocities_only,

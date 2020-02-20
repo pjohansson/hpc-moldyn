@@ -22,6 +22,19 @@ constexpr size_t MASTER = 0;
 
 #define MSDELAY 20
 
+// Master prints
+#define MASTER_PRINT(MPI_COMM, BODY) { \
+    if (is_master(MPI_COMM)) \
+    { \
+        BODY \
+    } \
+    MPI_Barrier(MPI_COMM.comm_world); \
+}
+
+#define MASTER_PRINT_OBJECT(MPI_COMM, OBJECT) { \
+    MASTER_PRINT(MPI_COMM, std::cerr << OBJECT << '\n';) \
+}
+
 // For every rank: Print the current rank number and evaluate the body.
 #define MPI_RANK_PRINT(MPI_COMM, BODY) { \
     for (size_t RANK_ = 0; RANK_ < MPI_COMM.num_ranks; ++RANK_) \
@@ -33,7 +46,7 @@ constexpr size_t MASTER = 0;
             std::cerr << '\n' << std::flush; \
         } \
         std::this_thread::sleep_for(std::chrono::milliseconds(MSDELAY)); \
-        MPI_Barrier(MPI_COMM_WORLD); \
+        MPI_Barrier(MPI_COMM.comm_world); \
     } \
 }
 
@@ -125,16 +138,18 @@ struct MPIRank {
     // it will be shared with for the force calculation and a handle
     // to the owning rank inside the communication record.
     //
-    // NOTE: These are allocated on the stack *only for those processing
+    // NOTE: The MPI handles are allocated on the heap *only for those processing
     // elements which are in the groups.* Be careful if freeing (right
     // now they'll all be freed at the end of runtime, since we don't
     // update them).
     std::vector<MPICellComm> cell_comm_groups;
 
-    // For each MPI rank, which cells it will receive for interactions.
+    // For each MPI rank, which cells it will receive positions of for 
+    // interaction calculations.
     std::vector<std::vector<size_t>> mpi_rank_received_cells;
 
-    // For each MPI rank, which cells it will transmit for interactions.
+    // For each MPI rank, which cells it will transmit positions of 
+    // for interaction calculations. 
     std::vector<std::vector<size_t>> mpi_rank_sending_cells;
 
     // Communication record for all ranks participating in the simulation.

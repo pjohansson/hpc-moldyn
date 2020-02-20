@@ -2,8 +2,8 @@
 
 #include "integrator.h"
 
-#define DEBUG 1;
-//#define DEBUG_HOLD 1;
+// #define DEBUG 1;
+// #define DEBUG_HOLD 1;
 
 // Equal to `RVec` but with the distance squared added as a final element.
 using dRVec = std::array<real, NDIM + 1>;
@@ -239,22 +239,6 @@ void run_velocity_verlet(System& system,
 {
     const auto& owned_cells = mpi_comm.mpi_rank_owned_cells.at(mpi_comm.rank);
 
-#ifdef DEBUG
-    if (is_master(mpi_comm))
-    {
-        std::cerr << "\nnum_atoms in owned cells before position update:\n";
-    }
-    MPI_RANK_PRINT(mpi_comm,
-        unsigned num_atoms = 0;
-        for (const auto i : owned_cells)
-        {
-            num_atoms += system.cell_lists.at(i).num_atoms();
-        }
-    
-        std::cerr << num_atoms;
-    )
-#endif
-
     bench.start_position_update();
     for (const auto& index_cell : owned_cells)
     {
@@ -263,112 +247,21 @@ void run_velocity_verlet(System& system,
     }
     bench.stop_position_update();
 
-#ifdef DEBUG
-    if (is_master(mpi_comm))
-    {
-        std::cerr << "\nnum_atoms in owned cells after position update:\n";
-    }
-    MPI_RANK_PRINT(mpi_comm,
-        unsigned num_atoms = 0;
-        for (const auto i : owned_cells)
-        {
-            num_atoms += system.cell_lists.at(i).num_atoms();
-        }
-    
-        std::cerr << num_atoms;
-    )
-#endif
-
     bench.start_cell_list_update();
     update_cell_lists(system);
     bench.stop_cell_list_update();
 
-#ifdef DEBUG
-    // if (is_master(mpi_comm))
-    // {
-    //     std::cerr << "\nnum_atoms in owned cells before move:\n";
-    // }
-    // MPI_RANK_PRINT(mpi_comm,
-    //     unsigned num_atoms = 0;
-    //     for (const auto i : owned_cells)
-    //     {
-    //         num_atoms += system.cell_lists.at(i).num_atoms();
-    //     }
-    //
-    //     std::cerr << num_atoms;
-    // )
-
-    // if (is_master(mpi_comm))
-    // {
-    //     std::cerr << "num_atoms in system before move:\n";
-    // }
-    // MPI_RANK_PRINT(mpi_comm, std::cerr << system.num_atoms();)
-#endif
-
+    bench.start_mpi_send_positions_update();
     // Move atoms to new masters here, then sync all the neighbouring
     // cells before the force calculation begins.
-
-#ifdef DEBUG
-    // if (is_master(mpi_comm))
-    // {
-    //     std::cerr << "\nnum_atoms in owned cells before move:\n";
-    // }
-    // MPI_RANK_PRINT(mpi_comm,
-    //     unsigned num_atoms = 0;
-    //     for (const auto i : mpi_comm.mpi_rank_owned_cells.at(mpi_comm.rank))
-    //     {
-    //         num_atoms += system.cell_lists.at(i).num_atoms();
-    //     }
-    //
-    //     std::cerr << num_atoms << ' ' << system.num_atoms();
-    // )
-#endif
-
     mpi_move_atoms_to_owning_ranks(system, mpi_comm);
     for (const auto& i : mpi_comm.mpi_rank_non_owned_cells.at(mpi_comm.rank))
     {
         system.cell_lists.at(i).resize_atom_list(0);
     }
 
-#ifdef DEBUG
-    // if (is_master(mpi_comm))
-    // {
-    //     std::cerr << "num_atoms in owned cells after move:\n";
-    // }
-    // MPI_RANK_PRINT(mpi_comm,
-    //     unsigned num_atoms = 0;
-    //     for (const auto i : mpi_comm.mpi_rank_owned_cells.at(mpi_comm.rank))
-    //     {
-    //         num_atoms += system.cell_lists.at(i).num_atoms();
-    //     }
-    //
-    //     std::cerr << num_atoms << ' ' << system.num_atoms();
-    // )
-
-    // if (is_master(mpi_comm))
-    // {
-    //     std::cerr << "num_atoms in owned cells after move:\n";
-    // }
-    // MPI_RANK_PRINT(mpi_comm,
-    //     unsigned num_atoms = 0;
-    //     for (const auto i : owned_cells)
-    //     {
-    //         num_atoms += system.cell_lists.at(i).num_atoms();
-    //     }
-    //
-    //     std::cerr << num_atoms;
-    // )
-
-    // if (is_master(mpi_comm))
-    // {
-    //     std::cerr << "num_atoms in system after move:\n";
-    // }
-    // MPI_RANK_PRINT(mpi_comm,
-    //     std::cerr << system.num_atoms();
-    // )
-#endif
-
     mpi_synchronize_interaction_cell_lists(system, mpi_comm);
+    bench.stop_mpi_send_positions_update();
 
     // The force calculation is in a separate iteration since
     // it is not local to each cell list, which resetting the forces
@@ -379,6 +272,7 @@ void run_velocity_verlet(System& system,
         auto& list = system.cell_lists.at(index_cell);
 
         calc_forces_internal(list, ff);
+
         for (const auto& to_list : list.to_neighbours)
         {
             calc_forces_cell_to_cell(list, system.cell_lists.at(to_list), ff);
@@ -386,67 +280,17 @@ void run_velocity_verlet(System& system,
     }
     bench.stop_force_update();
 
-    // Collect the forces here and reset the cells received cells.
+    bench.start_mpi_send_forces_update();
     mpi_collect_forces_from_interaction_cell_lists(system, mpi_comm);
+    bench.stop_mpi_send_forces_update();
+
+    bench.start_mpi_clean_update();
     reset_received_cell_lists(system, mpi_comm);
+    bench.stop_mpi_clean_update();
 
     bench.start_force_wall_update();
     calc_wall_forces(system, mpi_comm, ff);
     bench.stop_force_wall_update();
-
-#ifdef DEBUG
-    // if (is_master(mpi_comm))
-    // {
-    //     std::cerr << "num_atoms in owned cells before reset:\n";
-    // }
-    // MPI_RANK_PRINT(mpi_comm,
-    //     unsigned num_atoms = 0;
-    //     for (const auto i : mpi_comm.mpi_rank_owned_cells.at(mpi_comm.rank))
-    //     {
-    //         num_atoms += system.cell_lists.at(i).num_atoms();
-    //     }
-    //
-    //     std::cerr << num_atoms << ' ' << system.num_atoms();
-    // )
-#endif
-
-
-#ifdef DEBUG
-    // if (is_master(mpi_comm))
-    // {
-    //     std::cerr << "num_atoms in owned cells after reset:\n";
-    // }
-    // MPI_RANK_PRINT(mpi_comm,
-    //     unsigned num_atoms = 0;
-    //     for (const auto i : mpi_comm.mpi_rank_owned_cells.at(mpi_comm.rank))
-    //     {
-    //         num_atoms += system.cell_lists.at(i).num_atoms();
-    //     }
-    //
-    //     std::cerr << num_atoms << ' ' << system.num_atoms();
-    // )
-#endif
-
-    // for (const auto& i : mpi_comm.mpi_rank_non_owned_cells.at(mpi_comm.rank))
-    // {
-    //     system.cell_lists.at(i).resize_atom_list(0);
-    // }
-
-#ifdef DEBUG
-    // if (is_master(mpi_comm))
-    // {
-    //     std::cerr << "num_atoms in owned cells after full reset:\n";
-    // }
-    // MPI_RANK_PRINT(mpi_comm,
-    //     unsigned num_atoms = 0;
-    //     for (const auto i : mpi_comm.mpi_rank_owned_cells.at(mpi_comm.rank))
-    //     {
-    //         num_atoms += system.cell_lists.at(i).num_atoms();
-    //     }
-    //
-    //     std::cerr << num_atoms << ' ' << system.num_atoms();
-    // )
-#endif
 
     bench.start_velocity_update();
     for (const auto& index_cell : owned_cells)

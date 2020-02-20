@@ -236,36 +236,46 @@ static void fill_mpi_rank_and_cell_ownership(MPIRank&     mpi_comm,
 static void mpi_create_cell_comm_groups(MPIRank& mpi_comm,
                                         const std::vector<CellList>& cell_lists)
 {
+    // For each cell, gather the ranks which it will be sending
+    std::vector<std::set<size_t>> send_to_ranks_per_cell(
+        cell_lists.size(), std::set<size_t>()
+    );
+
+    for (size_t i = 0; i < cell_lists.size(); ++i)
+    {
+        const auto parent_rank = mpi_comm.cell_parent_mpi_ranks.at(i);
+        const auto& list = cell_lists.at(i);
+        
+        // `to_neighbours` contains the cell indices which cell `i` needs for 
+        // the force calculation. These cells will be sent to the parent of `i`.
+        // Thus we add the current rank (which will receive the cell) to the sender
+        // lists of those cells.
+        for (const auto& requires_cell : list.to_neighbours)
+        {
+            const auto to_rank = mpi_comm.cell_parent_mpi_ranks.at(requires_cell);
+
+            if (to_rank != parent_rank)
+            {
+                send_to_ranks_per_cell.at(requires_cell).insert(parent_rank);
+            }
+        }   
+    }
+
     MPI_Group buf_group, world_group;
     MPI_Comm_group(mpi_comm.comm_world, &world_group);
 
-    size_t i = 0;
-
-    for (const auto& list : cell_lists)
+    for (size_t i = 0; i < cell_lists.size(); ++i)
     {
-        // Initialize the collection with the parent of the cell,
-        // since it will always be present. Then fill in the rest.
-        const auto current_rank = static_cast<int>(
-            mpi_comm.cell_parent_mpi_ranks.at(i)
-        );
-        std::set<size_t> to_ranks_set;
+        const size_t parent_rank = mpi_comm.cell_parent_mpi_ranks.at(i);
+        const auto& to_ranks_set = send_to_ranks_per_cell.at(i);
+        const std::vector<size_t> to_ranks (to_ranks_set.cbegin(), to_ranks_set.cend());
 
-        for (const auto to_cell : list.to_neighbours)
-        {
-            const auto to_rank
-                = mpi_comm.cell_parent_mpi_ranks.at(to_cell);
+        // Create a list of the ranks which are in the communication group.
+        // This is the current cell's parent and any ranks in the `send_to_ranks_per_cell`
+        // list for the current cell.
+        const auto parent_rank_mpi = static_cast<int>(parent_rank);
+        std::vector<int> comm_group_ranks { parent_rank_mpi };
 
-            if (static_cast<int>(to_rank) != current_rank)
-            {
-                to_ranks_set.insert(static_cast<size_t>(to_rank));
-            }
-        }
-
-        const std::vector<size_t> to_ranks(
-            to_ranks_set.cbegin(), to_ranks_set.cend()
-        );
-
-        std::vector<int> comm_group_ranks { static_cast<int>(current_rank) };
         for (const auto rank : to_ranks_set)
         {
             comm_group_ranks.push_back(static_cast<int>(rank));
@@ -281,14 +291,15 @@ static void mpi_create_cell_comm_groups(MPIRank& mpi_comm,
         // Get the cell root (owner) in the constructed communicator group
         // by translating from MPI_COMM_WORLD
         int cell_comm_root = -1;
-        MPI_Group_translate_ranks(world_group, 1, &current_rank,
-            buf_group, &cell_comm_root);
+        MPI_Group_translate_ranks(
+            world_group, 1, &parent_rank_mpi,
+            buf_group, &cell_comm_root
+        );
 
         MPICellComm cell_comm { cell_comm_root, buf_comm, to_ranks };
         mpi_comm.cell_comm_groups.push_back(cell_comm);
 
         MPI_Group_free(&buf_group);
-        ++i;
     }
 
     MPI_Group_free(&world_group);
@@ -317,14 +328,18 @@ static void mpi_create_sending_and_receiving_cell_lists_for_ranks(
         const auto& list = cell_lists.at(i);
         const auto parent_rank = mpi_comm.cell_parent_mpi_ranks.at(i);
 
+        // MPI_VEC_PRINT(mpi_comm, list.to_neighbours);
+
         for (const auto to_cell : list.to_neighbours)
         {
             const auto to_rank = mpi_comm.cell_parent_mpi_ranks.at(to_cell);
 
             if (to_rank != parent_rank)
             {
-                received_cells_per_rank_set.at(to_rank).insert(i);
-                sending_cells_per_rank_set.at(parent_rank).insert(i);
+                // received_cells_per_rank_set.at(to_rank).insert(i);
+                // sending_cells_per_rank_set.at(parent_rank).insert(i);
+                received_cells_per_rank_set.at(parent_rank).insert(to_cell);
+                sending_cells_per_rank_set.at(to_rank).insert(to_cell);
             }
         }
     }
@@ -493,6 +508,10 @@ void mpi_init_cell_lists_and_transfer_atoms(System& system, MPIRank& mpi_comm)
  * MPI TRANSFER OF INTERACTION CELLS TO NEIGHBOURS *
  ***************************************************/
 
+// Send number of atoms to send for each cell to the ranks which need them for 
+// the force calculation.
+// 
+// Returns the MPI requests as a vector.
 static std::vector<MPI_Request> mpi_send_numbers(
     const std::vector<CellList>& cell_lists,
     const MPIRank&               mpi_comm
@@ -523,6 +542,10 @@ static std::vector<MPI_Request> mpi_send_numbers(
     return mpi_send_requests;
 }
 
+// Receive number of atoms to receive for each cell from the parent rank,
+// which the receiving cell needs for the force calculation.
+// 
+// Returns the MPI requests as a vector.
 static std::vector<MPI_Request> mpi_recv_numbers(
     std::vector<size_t>&         num_recv_per_cell,
     const std::vector<CellList>& cell_lists,
