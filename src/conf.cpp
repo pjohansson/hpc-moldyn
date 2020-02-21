@@ -229,7 +229,6 @@ static void add_neighbouring_cells(System& system)
         const auto iy = static_cast<int>(position[YY]);
         const auto iz = static_cast<int>(position[ZZ]);
 
-        // std::vector<size_t> lower_neighbours;
         std::vector<size_t> upper_neighbours;
         bool to_upper = false;
 
@@ -254,10 +253,6 @@ static void add_neighbouring_cells(System& system)
                         {
                             upper_neighbours.push_back(to_index);
                         }
-                        // else
-                        // {
-                        //     lower_neighbours.push_back(to_index);
-                        // }
                     }
                 }
             }

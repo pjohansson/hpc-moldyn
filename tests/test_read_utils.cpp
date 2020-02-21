@@ -20,9 +20,6 @@ ADD_TEST(test_read_full_parameter_file,
     ASSERT_EQ(opts.gen_velocities, true,
         "gen_velocities was not read correctly");
     ASSERT_EQ(opts.gen_temp, 20.0, "gen_temp was not read correctly");
-
-    // Should not be set by the file
-    ASSERT_EQ(opts.verbose, false, "verbose was not initialized to false");
 )
 
 ADD_TEST(test_read_bad_parameter_file_catches_exception,

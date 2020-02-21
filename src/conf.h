@@ -18,7 +18,16 @@ enum class OutputMode {
     Append
 };
 
+// Select floating point precision for coordinates, velocities and forces.
+// Either float or double.
+#define USE_DOUBLE
+
+#ifdef USE_DOUBLE
 using real = double;
+#else
+using real = float;
+#endif
+
 using RVec = std::array<real, NDIM>;
 using IVec = std::array<uint64_t, NDIM>;
 
@@ -43,8 +52,31 @@ public:
     // Add an atom with input position to the system.
     void add_atom(const real x, const real y, const real z);
 
+    // Update the saved number of atoms to match the position vector.
     void update_num_atoms(void) {
         natoms = static_cast<uint64_t>(xs.size() / NDIM);
+    }
+
+    // Resize the cell list by either adding zeroed-values or removing elements.
+    void resize_atom_list(const uint64_t new_num_atoms) {
+        const auto new_size = NDIM * new_num_atoms;
+        xs.resize(new_size);
+        vs.resize(new_size);
+        fs.resize(new_size);
+        fs_prev.resize(new_size);
+
+        natoms = new_num_atoms;
+    }
+
+    // Resize the cell list for force calculation:
+    // ignore the velocity and previous force lists, since they are only
+    // used on the owning rank which this will not be called on.
+    void resize_atom_list_force_calc(const uint64_t new_num_atoms) {
+        const auto new_size = NDIM * new_num_atoms;
+        xs.resize(new_size);
+        fs.assign(new_size, 0.0);
+
+        natoms = new_num_atoms;
     }
 
     /************
@@ -74,6 +106,14 @@ private:
 
 class System {
 public:
+    // Prepare an empty system.
+    System()
+    :box_size { 0.0, 0.0, 0.0 },
+     shape { 0, 0, 0 },
+     cell_size { 0.0, 0.0, 0.0 },
+     title { "" }
+    {}
+
     // Prepare a container for the system.
     System(const std::string& title, const RVec box_size);
 

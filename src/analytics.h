@@ -6,6 +6,8 @@
 #ifndef ANALYTICS_H
 #define ANALYTICS_H
 
+using ChronoTime = decltype(std::chrono::system_clock::now());
+
 class Benchmark {
 public:
     // Initialize all timers to 0 and start the total simulation timer.
@@ -17,6 +19,10 @@ public:
      velocity_update { 0.0 },
      energy_calc_update { 0.0 },
      traj_output_update { 0.0 },
+     simulation_time_update { 0.0 },
+     mpi_setup_update { 0.0 },
+     mpi_send_positions_update { 0.0 },
+     mpi_send_forces_update { 0.0 },
      simulation_total { 0.0 },
      total_start { std::chrono::system_clock::now() } {}
 
@@ -31,6 +37,11 @@ public:
     void start_velocity_update(void);
     void start_energy_calc_update(void);
     void start_traj_output_update(void);
+    void start_simulation_time_update(void);
+    void start_mpi_setup_update(void);
+    void start_mpi_send_positions_update(void);
+    void start_mpi_send_forces_update(void);
+    void start_mpi_clean_update(void);
 
     // Stop timers and add the duration from the start to the total.
     void stop_cell_list_update(void);
@@ -40,6 +51,11 @@ public:
     void stop_velocity_update(void);
     void stop_energy_calc_update(void);
     void stop_traj_output_update(void);
+    void stop_simulation_time_update(void);
+    void stop_mpi_setup_update(void);
+    void stop_mpi_send_positions_update(void);
+    void stop_mpi_send_forces_update(void);
+    void stop_mpi_clean_update(void);
 
     // Total time spent in different tasks.
     std::chrono::duration<double> cell_list_update,
@@ -49,25 +65,37 @@ public:
                                   velocity_update,
                                   energy_calc_update,
                                   traj_output_update,
+                                  simulation_time_update,
+                                  mpi_setup_update,
+                                  mpi_send_positions_update,
+                                  mpi_send_forces_update,
+                                  mpi_clean_update,
                                   simulation_total,
                                   rest;
 
 private:
-    decltype(std::chrono::system_clock::now()) cell_list_start,
-                                               force_start,
-                                               force_wall_start,
-                                               position_start,
-                                               velocity_start,
-                                               energy_calc_start,
-                                               traj_output_start,
-                                               total_start;
+    ChronoTime cell_list_start,
+               force_start,
+               force_wall_start,
+               position_start,
+               velocity_start,
+               energy_calc_start,
+               traj_output_start,
+               simulation_time_start,
+               mpi_setup_start,
+               mpi_send_positions_start,
+               mpi_send_forces_start,
+               mpi_clean_start,
+               total_start;
 };
 
 // Keep track of the non-dimensional energetics of the system during
 // a simulation.
 struct Energetics {
     std::vector<double> potential,
-                        temperature;
+                        temperature,
+                        times_per_calc;
+    ChronoTime last_time;
 };
 
 // Describe the system.
@@ -77,7 +105,10 @@ void describe_system_config(const System& system, const ForceField& ff);
 void show_atom_cell_list_distribution(const System& system);
 
 // Print the benchmark data to stdout.
-void print_benchmark(const Benchmark& bench);
+void print_benchmark(const Benchmark& bench, const uint64_t num_steps);
+
+// Initiate calculation of system energetics.
+void init_system_energetics(Energetics &energetics);
 
 // Calculate the energetics of the system and append to the object vectors.
 void calculate_system_energetics(Energetics& energetics,

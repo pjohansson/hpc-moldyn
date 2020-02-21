@@ -2,6 +2,9 @@
 
 #include "integrator.h"
 
+// #define DEBUG 1;
+// #define DEBUG_HOLD 1;
+
 // Equal to `RVec` but with the distance squared added as a final element.
 using dRVec = std::array<real, NDIM + 1>;
 
@@ -181,10 +184,14 @@ static void calc_wall_forces_in_list(CellList& list,
 
 // Add forces from a potential wall that restrains particles
 // to stay inside the system.
-static void calc_wall_forces(System& system, const ForceField& ff)
+static void calc_wall_forces(System& system,
+                             const MPIRank& mpi_comm,
+                             const ForceField& ff)
 {
-    for (auto& list : system.cell_lists)
+    // for (auto& list : system.cell_lists)
+    for (const auto& i : mpi_comm.mpi_rank_owned_cells.at(mpi_comm.rank))
     {
+        auto& list = system.cell_lists.at(i);
         calc_wall_forces_in_list(list, system.box_size, ff.wall_constant);
     }
 }
@@ -226,12 +233,16 @@ static void update_velocities_cell(CellList& list,
 
 void run_velocity_verlet(System& system,
                          Benchmark& bench,
+                         const MPIRank& mpi_comm,
                          const ForceField& ff,
                          const Options& opts)
 {
+    const auto& owned_cells = mpi_comm.mpi_rank_owned_cells.at(mpi_comm.rank);
+
     bench.start_position_update();
-    for (auto& list : system.cell_lists)
+    for (const auto& index_cell : owned_cells)
     {
+        auto& list = system.cell_lists.at(index_cell);
         update_positions_cell(list, ff, opts);
     }
     bench.stop_position_update();
@@ -240,27 +251,51 @@ void run_velocity_verlet(System& system,
     update_cell_lists(system);
     bench.stop_cell_list_update();
 
+    bench.start_mpi_send_positions_update();
+    // Move atoms to new masters here, then sync all the neighbouring
+    // cells before the force calculation begins.
+    mpi_move_atoms_to_owning_ranks(system, mpi_comm);
+    for (const auto& i : mpi_comm.mpi_rank_non_owned_cells.at(mpi_comm.rank))
+    {
+        system.cell_lists.at(i).resize_atom_list(0);
+    }
+
+    mpi_synchronize_interaction_cell_lists(system, mpi_comm);
+    bench.stop_mpi_send_positions_update();
+
     // The force calculation is in a separate iteration since
     // it is not local to each cell list, which resetting the forces
     // in each iteration will mess up.
     bench.start_force_update();
-    for (auto& list : system.cell_lists)
+    for (const auto& index_cell : owned_cells)
     {
+        auto& list = system.cell_lists.at(index_cell);
+
         calc_forces_internal(list, ff);
-        for (const auto& i : list.to_neighbours)
+
+        for (const auto& to_list : list.to_neighbours)
         {
-            calc_forces_cell_to_cell(list, system.cell_lists.at(i), ff);
+            calc_forces_cell_to_cell(list, system.cell_lists.at(to_list), ff);
         }
     }
     bench.stop_force_update();
 
+    bench.start_mpi_send_forces_update();
+    mpi_collect_forces_from_interaction_cell_lists(system, mpi_comm);
+    bench.stop_mpi_send_forces_update();
+
+    bench.start_mpi_clean_update();
+    reset_received_cell_lists(system, mpi_comm);
+    bench.stop_mpi_clean_update();
+
     bench.start_force_wall_update();
-    calc_wall_forces(system, ff);
+    calc_wall_forces(system, mpi_comm, ff);
     bench.stop_force_wall_update();
 
     bench.start_velocity_update();
-    for (auto& list : system.cell_lists)
+    for (const auto& index_cell : owned_cells)
     {
+        auto& list = system.cell_lists.at(index_cell);
         update_velocities_cell(list, ff, opts);
     }
     bench.stop_velocity_update();
