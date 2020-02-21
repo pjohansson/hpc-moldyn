@@ -62,7 +62,9 @@ void Benchmark::finalize(void)
     rest = simulation_total - cell_list_update
         - force_update - force_wall_update
         - position_update - velocity_update
-        - energy_calc_update - traj_output_update;
+        - energy_calc_update - traj_output_update
+        - mpi_setup_update - mpi_send_forces_update 
+        - mpi_send_positions_update;
 }
 
 void Benchmark::start_cell_list_update(void)
@@ -98,6 +100,16 @@ void Benchmark::start_energy_calc_update(void)
 void Benchmark::start_traj_output_update(void)
 {
     traj_output_start = std::chrono::system_clock::now();
+}
+
+void Benchmark::start_simulation_time_update(void)
+{
+    simulation_time_start = std::chrono::system_clock::now();
+}
+
+void Benchmark::start_mpi_setup_update(void)
+{
+    mpi_setup_start = std::chrono::system_clock::now();
 }
 
 void Benchmark::start_mpi_send_positions_update(void)
@@ -148,6 +160,16 @@ void Benchmark::stop_energy_calc_update(void)
 void Benchmark::stop_traj_output_update(void)
 {
     traj_output_update += std::chrono::system_clock::now() - traj_output_start;
+}
+
+void Benchmark::stop_simulation_time_update(void)
+{
+    simulation_time_update += std::chrono::system_clock::now() - simulation_time_start;
+}
+
+void Benchmark::stop_mpi_setup_update(void)
+{
+    mpi_setup_update += std::chrono::system_clock::now() - mpi_setup_start;
 }
 
 void Benchmark::stop_mpi_send_positions_update(void)
@@ -234,18 +256,21 @@ void print_benchmark(const Benchmark& bench, const uint64_t num_steps)
                    bench.energy_calc_update, bench.simulation_total);
     print_a_timing("Trajectory writing",
                    bench.traj_output_update, bench.simulation_total);
+    print_a_timing("MPI setup",
+                   bench.mpi_setup_update, bench.simulation_total);
     print_a_timing("MPI send positions",
                    bench.mpi_send_positions_update, bench.simulation_total);
     print_a_timing("MPI send forces",
                    bench.mpi_send_forces_update, bench.simulation_total);
-    print_a_timing("MPI clean-up",
+    print_a_timing("MPI cleanup",
                    bench.mpi_clean_update, bench.simulation_total);
     print_a_timing("Rest",
                    bench.rest, bench.simulation_total);
     
     const auto total_wall_time = calc_seconds(bench.simulation_total);
+    const auto simulation_wall_time = calc_seconds(bench.simulation_time_update);
     const auto steps_per_minute = static_cast<uint32_t>(
-        60.0 * static_cast<double>(num_steps) / total_wall_time);
+        60.0 * static_cast<double>(num_steps) / simulation_wall_time);
 
     std::cerr << linebreaker
         << std::setw(name_length) << std::left << "Total walltime"
@@ -253,17 +278,23 @@ void print_benchmark(const Benchmark& bench, const uint64_t num_steps)
         << std::right << std::setprecision(1) << std::fixed
         << total_wall_time << '\n';
 
+    std::cerr 
+        << std::setw(name_length) << std::left << "Simulation walltime"
+        << std::setw(time_length + sep_length)
+        << std::right << std::setprecision(1) << std::fixed
+        << simulation_wall_time << '\n';
+
     std::cerr
         << std::setw(name_length) << std::left << "Time per 1000 steps"
         << std::setw(time_length + sep_length)
         << std::right << std::setprecision(1) << std::fixed
-        << total_wall_time * 1000 / num_steps << '\n';
+        << simulation_wall_time * 1000 / num_steps << '\n';
 
     std::cerr
         << std::setw(name_length) << std::left << "Steps per minute"
         << std::setw(time_length + sep_length)
         << std::right << std::fixed
-        << steps_per_minute << '\n';
+        << steps_per_minute << " steps\n";
 }
 
 RVec calc_mean_velocity(const System& system)

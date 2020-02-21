@@ -19,6 +19,8 @@ public:
      velocity_update { 0.0 },
      energy_calc_update { 0.0 },
      traj_output_update { 0.0 },
+     simulation_time_update { 0.0 },
+     mpi_setup_update { 0.0 },
      mpi_send_positions_update { 0.0 },
      mpi_send_forces_update { 0.0 },
      simulation_total { 0.0 },
@@ -35,6 +37,8 @@ public:
     void start_velocity_update(void);
     void start_energy_calc_update(void);
     void start_traj_output_update(void);
+    void start_simulation_time_update(void);
+    void start_mpi_setup_update(void);
     void start_mpi_send_positions_update(void);
     void start_mpi_send_forces_update(void);
     void start_mpi_clean_update(void);
@@ -47,6 +51,8 @@ public:
     void stop_velocity_update(void);
     void stop_energy_calc_update(void);
     void stop_traj_output_update(void);
+    void stop_simulation_time_update(void);
+    void stop_mpi_setup_update(void);
     void stop_mpi_send_positions_update(void);
     void stop_mpi_send_forces_update(void);
     void stop_mpi_clean_update(void);
@@ -59,6 +65,8 @@ public:
                                   velocity_update,
                                   energy_calc_update,
                                   traj_output_update,
+                                  simulation_time_update,
+                                  mpi_setup_update,
                                   mpi_send_positions_update,
                                   mpi_send_forces_update,
                                   mpi_clean_update,
@@ -73,6 +81,8 @@ private:
                velocity_start,
                energy_calc_start,
                traj_output_start,
+               simulation_time_start,
+               mpi_setup_start,
                mpi_send_positions_start,
                mpi_send_forces_start,
                mpi_clean_start,

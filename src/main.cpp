@@ -123,6 +123,8 @@ int main(int argc, char* argv[])
         benchmark.stop_traj_output_update();
     }
 
+    benchmark.start_mpi_setup_update();
+
     if (!sync_options(opts, mpi_comm))
     {
         if (is_master(mpi_comm))
@@ -151,6 +153,8 @@ int main(int argc, char* argv[])
     mpi_move_atoms_to_owning_ranks(system, mpi_comm);
     mpi_fill_communication_data(mpi_comm, system);
 
+    benchmark.stop_mpi_setup_update();
+
     // size_t stepout_stride = 10;
     size_t stepout_stride = 10;
 
@@ -167,6 +171,8 @@ int main(int argc, char* argv[])
 
         std::cerr << "Simulating " << opts.num_steps << " steps:\n";
     }
+
+    benchmark.start_simulation_time_update();
 
     for (uint64_t step = 0; step < opts.num_steps; ++step)
     {
@@ -221,6 +227,8 @@ int main(int argc, char* argv[])
         // TODO: time idle
         MPI_Barrier(MPI_COMM_WORLD);
     }
+
+    benchmark.stop_simulation_time_update();
 
     mpi_collect_atoms_to_master(system, mpi_comm);
 
